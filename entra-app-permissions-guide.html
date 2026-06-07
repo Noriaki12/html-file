@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entra エンタープライズアプリ・権限・同意 完全攻略</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   DESIGN TOKENS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+:root {
+  --c-bg:       #f4f5fb;
+  --c-surface:  #ffffff;
+  --c-card:     #fafafa;
+  --c-border:   #e5e7ef;
+
+  --c-indigo:   #4338ca;
+  --c-indigo-l: #6366f1;
+  --c-indigo-xl:#eef2ff;
+  --c-violet:   #7c3aed;
+  --c-violet-l: #a78bfa;
+  --c-violet-xl:#f5f3ff;
+  --c-sky:      #0284c7;
+  --c-sky-xl:   #e0f2fe;
+  --c-emerald:  #059669;
+  --c-emerald-xl:#d1fae5;
+  --c-amber:    #d97706;
+  --c-amber-xl: #fef3c7;
+  --c-red:      #dc2626;
+  --c-red-xl:   #fee2e2;
+  --c-slate:    #1e293b;
+
+  --c-text:     #1e1b2e;
+  --c-muted:    #64748b;
+  --c-light:    #f1f5f9;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+
+  --sh-sm: 0 1px 3px rgba(0,0,0,.08);
+  --sh-md: 0 4px 12px rgba(0,0,0,.08);
+  --sh-lg: 0 8px 24px rgba(0,0,0,.08);
+
+  --f-head: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+  --f-body: 'Noto Sans JP', sans-serif;
+  --f-mono: 'JetBrains Mono', monospace;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   RESET & BASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+img { display: block; max-width: 100%; }
+ul { list-style: none; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   HEADER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.site-header {
+  background: linear-gradient(145deg, #1e1b4b 0%, #312e81 45%, #4c1d95 100%);
+  color: #fff;
+  padding: clamp(36px, 8vw, 64px) 20px clamp(32px, 7vw, 56px);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.site-header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle 400px at 20% 60%, rgba(99,102,241,.25), transparent),
+    radial-gradient(circle 300px at 80% 30%, rgba(167,139,250,.2), transparent);
+}
+.site-header::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #6366f1, #a78bfa, #818cf8);
+}
+.header-inner { position: relative; max-width: 680px; margin: 0 auto; }
+.header-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #a5b4fc;
+  border: 1px solid rgba(165,180,252,.35);
+  border-radius: 20px;
+  padding: 4px 12px;
+  margin-bottom: 20px;
+}
+.site-header h1 {
+  font-family: var(--f-head);
+  font-size: clamp(22px, 5vw, 38px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -.02em;
+  margin-bottom: 14px;
+}
+.site-header h1 .hl { color: #a5b4fc; }
+.site-header .lead {
+  color: #c7d2fe;
+  font-size: clamp(13px, 2.5vw, 15px);
+  line-height: 1.7;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   TAB NAV
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.tab-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #1e1b4b;
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  padding: 0 12px;
+}
+.tab-nav::-webkit-scrollbar { display: none; }
+.tab-btn {
+  flex-shrink: 0;
+  padding: 14px 16px;
+  font-family: var(--f-body);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #94a3b8;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .2s, border-color .2s;
+  margin-bottom: -1px;
+}
+.tab-btn:hover { color: #e2e8f0; }
+.tab-btn.active { color: #a5b4fc; border-bottom-color: #818cf8; font-weight: 700; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   LAYOUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.tab-pane { display: none; }
+.tab-pane.active {
+  display: block;
+  animation: fadeUp .3s ease both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.wrap { max-width: 860px; margin: 0 auto; padding: 36px 16px 72px; }
+.section { margin-bottom: 48px; }
+.section:last-child { margin-bottom: 0; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SECTION TITLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.sec-title {
+  font-family: var(--f-head);
+  font-size: clamp(17px, 3vw, 21px);
+  font-weight: 700;
+  color: var(--c-slate);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.sec-icon {
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   CARDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  padding: clamp(18px, 4vw, 28px);
+  margin-bottom: 16px;
+  box-shadow: var(--sh-sm);
+}
+.card-title {
+  font-family: var(--f-head);
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.card p { color: #44403c; font-size: 14px; line-height: 1.8; }
+.card + .card { margin-top: 0; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   TAGS / BADGES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.tag {
+  display: inline-block;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.t-indigo  { background: var(--c-indigo-xl); color: var(--c-indigo); }
+.t-violet  { background: var(--c-violet-xl); color: var(--c-violet); }
+.t-sky     { background: var(--c-sky-xl);    color: var(--c-sky); }
+.t-emerald { background: var(--c-emerald-xl);color: var(--c-emerald); }
+.t-amber   { background: var(--c-amber-xl);  color: var(--c-amber); }
+.t-red     { background: var(--c-red-xl);    color: var(--c-red); }
+.t-slate   { background: #e2e8f0;            color: var(--c-slate); }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   2-COLUMN GRID
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+@media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+@media (max-width: 680px) { .grid-3 { grid-template-columns: 1fr; } }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   INFO BOXES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.info {
+  border-radius: var(--r-sm);
+  padding: 14px 18px;
+  font-size: 13.5px;
+  line-height: 1.75;
+  margin: 12px 0;
+}
+.info strong { display: block; margin-bottom: 5px; font-size: 13px; }
+.info.indigo { background: var(--c-indigo-xl); border: 1px solid #c7d2fe; }
+.info.indigo strong { color: var(--c-indigo); }
+.info.violet { background: var(--c-violet-xl); border: 1px solid #ddd6fe; }
+.info.violet strong { color: var(--c-violet); }
+.info.emerald { background: var(--c-emerald-xl); border: 1px solid #6ee7b7; }
+.info.emerald strong { color: var(--c-emerald); }
+.info.amber { background: var(--c-amber-xl); border: 1px solid #fcd34d; }
+.info.amber strong { color: var(--c-amber); }
+.info.red { background: var(--c-red-xl); border: 1px solid #fca5a5; }
+.info.red strong { color: var(--c-red); }
+.info.sky { background: var(--c-sky-xl); border: 1px solid #7dd3fc; }
+.info.sky strong { color: var(--c-sky); }
+
+/* Analogy special box */
+.analogy {
+  background: linear-gradient(135deg, #fefce8, #fffbeb);
+  border: 1px solid #fde68a;
+  border-left: 4px solid var(--c-amber);
+  border-radius: var(--r-sm);
+  padding: 16px 18px;
+  font-size: 13.5px;
+  line-height: 1.75;
+  margin: 14px 0;
+}
+.analogy .a-label {
+  font-family: var(--f-head);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-amber);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: 6px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   TABLES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.tbl-wrap { overflow-x: auto; margin-bottom: 14px; border-radius: var(--r-md); border: 1px solid var(--c-border); box-shadow: var(--sh-sm); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead tr { background: var(--c-slate); }
+th {
+  color: #fff;
+  padding: 10px 14px;
+  text-align: left;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+td { padding: 10px 14px; border-bottom: 1px solid var(--c-border); vertical-align: top; line-height: 1.6; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--c-light); }
+.ok  { color: var(--c-emerald); font-weight: 700; }
+.ng  { color: var(--c-red); }
+.na  { color: var(--c-muted); }
+code {
+  font-family: var(--f-mono);
+  font-size: 11.5px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--c-violet);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   STEP LIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.steps { display: flex; flex-direction: column; }
+.step { display: flex; gap: 14px; position: relative; }
+.step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 16px; top: 35px;
+  width: 2px;
+  height: calc(100% - 4px);
+  background: linear-gradient(180deg, var(--c-indigo-l), transparent);
+}
+.s-num {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--c-indigo);
+  color: #fff;
+  font-family: var(--f-mono);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; z-index: 1;
+  box-shadow: 0 2px 6px rgba(67,56,202,.35);
+}
+.s-body { padding: 4px 0 26px; flex: 1; }
+.s-body strong { display: block; font-size: 14px; font-weight: 700; margin-bottom: 5px; color: var(--c-slate); }
+.s-body p { color: var(--c-muted); font-size: 13px; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   COMPARE CARDS (big visual)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.compare-card {
+  background: var(--c-surface);
+  border: 2px solid var(--c-border);
+  border-radius: var(--r-lg);
+  padding: 22px;
+  box-shadow: var(--sh-sm);
+  transition: box-shadow .2s;
+}
+.compare-card:hover { box-shadow: var(--sh-md); }
+.compare-card.indigo-border { border-top: 4px solid var(--c-indigo); }
+.compare-card.violet-border { border-top: 4px solid var(--c-violet); }
+.compare-card.sky-border    { border-top: 4px solid var(--c-sky); }
+.cc-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px;
+}
+.cc-icon { font-size: 22px; }
+.cc-label {
+  font-family: var(--f-head);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-slate);
+}
+.cc-list { list-style: none; }
+.cc-list li {
+  font-size: 13px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.6;
+  color: #44403c;
+}
+.cc-list li:last-child { border-bottom: none; }
+.cc-list li::before { content: '▸'; color: var(--c-indigo-l); flex-shrink: 0; margin-top: 1px; font-size: 12px; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FLOW DIAGRAM (CSS-only)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.flow-wrap { overflow-x: auto; padding: 8px 0; }
+.flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 420px;
+}
+.fbox {
+  flex: 1;
+  background: var(--c-surface);
+  border: 2px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding: 12px 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.fbox .fl { font-family: var(--f-mono); font-size: 9.5px; color: var(--c-muted); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .07em; }
+.fbox.fb-indigo { border-color: var(--c-indigo); background: var(--c-indigo-xl); }
+.fbox.fb-violet { border-color: var(--c-violet); background: var(--c-violet-xl); }
+.fbox.fb-sky    { border-color: var(--c-sky);    background: var(--c-sky-xl); }
+.fbox.fb-emerald { border-color: var(--c-emerald); background: var(--c-emerald-xl); }
+.fbox.fb-amber  { border-color: var(--c-amber);  background: var(--c-amber-xl); }
+.farrow {
+  flex-shrink: 0;
+  padding: 0 4px;
+  color: var(--c-muted);
+  font-size: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.farrow span { font-family: var(--f-mono); font-size: 9px; color: var(--c-muted); white-space: nowrap; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SCENARIO BOX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.scenario-box {
+  background: #1e1b4b;
+  color: #e2e8f0;
+  border-radius: var(--r-lg);
+  padding: clamp(20px, 4vw, 28px);
+  margin-bottom: 24px;
+}
+.scenario-box h3 {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: #a5b4fc;
+  margin-bottom: 16px;
+}
+.scenario-box ul li {
+  font-size: 13.5px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  display: flex;
+  gap: 10px;
+  line-height: 1.65;
+}
+.scenario-box ul li:last-child { border-bottom: none; }
+.scenario-box ul li::before { content: '▸'; color: #818cf8; flex-shrink: 0; margin-top: 2px; }
+.scenario-box .prob {
+  margin-top: 14px;
+  background: rgba(251,191,36,.12);
+  border: 1px solid rgba(251,191,36,.3);
+  border-radius: var(--r-sm);
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #fde68a;
+  line-height: 1.65;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ACCORDION (exam Q)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.acc-list { display: flex; flex-direction: column; gap: 10px; }
+.acc {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  box-shadow: var(--sh-sm);
+}
+.acc-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 18px;
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s;
+}
+.acc-head:hover { background: var(--c-light); }
+.verdict {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+.v-ok  { background: var(--c-emerald-xl); color: var(--c-emerald); border: 1px solid #6ee7b7; }
+.v-ng  { background: var(--c-red-xl);     color: var(--c-red);     border: 1px solid #fca5a5; }
+.acc-q { font-size: 13.5px; font-weight: 500; flex: 1; line-height: 1.5; }
+.acc-arrow { color: var(--c-muted); font-size: 11px; flex-shrink: 0; transition: transform .2s; margin-left: auto; }
+.acc-head.open .acc-arrow { transform: rotate(180deg); }
+.acc-body { display: none; padding: 0 18px 18px; font-size: 13.5px; color: #44403c; line-height: 1.8; border-top: 1px solid var(--c-border); }
+.acc-body.open { display: block; padding-top: 16px; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   TIP CARDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+.tip {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  border-top: 3px solid var(--c-indigo);
+  padding: 18px;
+  box-shadow: var(--sh-sm);
+}
+.tip h4 { font-family: var(--f-head); font-size: 13.5px; font-weight: 700; margin-bottom: 8px; color: var(--c-slate); }
+.tip p  { font-size: 12.5px; color: var(--c-muted); line-height: 1.7; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   HIGHLIGHT ROW (summary table)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+tr.hl-row td { background: var(--c-indigo-xl); font-weight: 600; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   KEY-POINT BANNER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.kp-banner {
+  background: linear-gradient(135deg, #312e81, #4c1d95);
+  color: #fff;
+  border-radius: var(--r-lg);
+  padding: clamp(20px, 4vw, 28px);
+  margin-bottom: 20px;
+}
+.kp-banner h3 { font-family: var(--f-head); font-size: 16px; font-weight: 700; color: #a5b4fc; margin-bottom: 12px; }
+.kp-banner ul li {
+  font-size: 13.5px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  display: flex;
+  gap: 10px;
+  line-height: 1.65;
+}
+.kp-banner ul li:last-child { border-bottom: none; }
+.kp-banner ul li::before { content: '→'; color: #818cf8; flex-shrink: 0; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FOOTER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.site-footer {
+  background: #1e1b4b;
+  color: #64748b;
+  text-align: center;
+  padding: 20px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MOBILE ADJUSTMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media (max-width: 480px) {
+  .acc-head { padding: 13px 14px; gap: 9px; }
+  .acc-q { font-size: 13px; }
+  .card { padding: 16px; }
+  .fbox { font-size: 11px; padding: 10px 8px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-eyebrow">SC-300 / AZ-500 対応</div>
+    <h1>Entra <span class="hl">エンタープライズアプリ</span><br>権限と同意の完全攻略</h1>
+    <p class="lead">「非対話型って何？」「管理者同意とユーザー同意の違いは？」を<br>ゼロから図解で理解する</p>
+  </div>
+</header>
+
+<!-- ══════════════ TABS ══════════════ -->
+<nav class="tab-nav" id="tabNav">
+  <button class="tab-btn active" onclick="switchTab('what')">① そもそも論</button>
+  <button class="tab-btn" onclick="switchTab('perm')">② 権限の種類</button>
+  <button class="tab-btn" onclick="switchTab('consent')">③ 同意の仕組み</button>
+  <button class="tab-btn" onclick="switchTab('interactive')">④ 対話型 vs 非対話型</button>
+  <button class="tab-btn" onclick="switchTab('exam')">⑤ 問題解説</button>
+  <button class="tab-btn" onclick="switchTab('tips')">⑥ 試験対策</button>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     TAB 1: そもそも論
+══════════════════════════════════════════ -->
+<div class="tab-pane active" id="tab-what">
+<div class="wrap">
+
+  <div class="section">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#eef2ff">🏢</span>
+      エンタープライズアプリとは何か
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="tag t-indigo">Enterprise App</span> エンタープライズアプリケーション</div>
+      <p>Entra ID（旧Azure AD）のテナントに登録された「外部サービスとの接続設定」。<br>
+      「このSaaSにはこのユーザーがアクセスできる」「このSaaSにはこのAPIの権限を与える」といった設定の入れ物。</p>
+      <div class="analogy">
+        <div class="a-label">🎡 たとえ話</div>
+        会社のビルの入館証システム（Entra ID）に、「〇〇SaaS社の社員証でも入れるようにする」という設定を登録する行為。<br>
+        この「登録した設定情報」1件1件が「エンタープライズアプリ」。
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="compare-card indigo-border">
+        <div class="cc-header">
+          <span class="cc-icon">🔑</span>
+          <span class="cc-label">アプリ登録<br><span style="font-size:11px;font-weight:400;color:var(--c-muted)">App Registration</span></span>
+        </div>
+        <ul class="cc-list">
+          <li>アプリを「開発者」として登録する入口</li>
+          <li>クライアントID・シークレットを発行</li>
+          <li>自社開発アプリや独自統合に使う</li>
+          <li>テナント内に1つ作られる「設計図」</li>
+        </ul>
+      </div>
+      <div class="compare-card violet-border">
+        <div class="cc-header">
+          <span class="cc-icon">🏪</span>
+          <span class="cc-label">エンタープライズアプリ<br><span style="font-size:11px;font-weight:400;color:var(--c-muted)">Enterprise App</span></span>
+        </div>
+        <ul class="cc-list">
+          <li>アプリ登録から自動生成されるインスタンス</li>
+          <li>ユーザー・グループの割り当て管理</li>
+          <li>SaaSのSSO設定・権限設定の場所</li>
+          <li>実際に「使う設定」を管理する場所</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info indigo">
+      <strong>💡 今回の問題でのエンタープライズアプリの役割</strong>
+      サードパーティ製メールスキャンシステムが Entra ID テナントに接続するために使う「接続口」。
+      このアプリに「どんな権限を与えるか」「誰が使えるか」が設定されている。
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#f5f3ff">🔐</span>
+      OAuth 2.0 と Entra ID の関係
+    </div>
+
+    <div class="card">
+      <div class="card-title">なぜアプリに「権限」が必要か</div>
+      <p style="margin-bottom:14px">クラウドサービスがテナントのデータにアクセスするとき、「何を見ていい・何をしていい」を明示的に定義する必要がある。これがアクセス許可（Permission）の設定。</p>
+      <div class="flow-wrap">
+        <div class="flow">
+          <div class="fbox fb-indigo">
+            <span class="fl">アプリ</span>
+            メールスキャンSaaS
+          </div>
+          <div class="farrow">→<span>アクセス要求</span></div>
+          <div class="fbox fb-violet">
+            <span class="fl">Entra ID</span>
+            権限を確認・トークン発行
+          </div>
+          <div class="farrow">→<span>許可トークン</span></div>
+          <div class="fbox fb-sky">
+            <span class="fl">リソース</span>
+            Microsoft Graph API<br>（ユーザー一覧など）
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:14px; font-size:13px; color:var(--c-muted)">
+        Entra ID が「このアプリにはどんな操作を許可するか」を管理し、許可された範囲でのみAPIアクセスを認める。
+      </p>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 2: 権限の種類
+══════════════════════════════════════════ -->
+<div class="tab-pane" id="tab-perm">
+<div class="wrap">
+
+  <div class="section">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#eef2ff">⚖️</span>
+      2種類のアクセス許可
+    </div>
+
+    <div class="kp-banner">
+      <h3>🔑 最重要：権限は2種類しかない</h3>
+      <ul>
+        <li>委任されたアクセス許可（Delegated）= ユーザーの代わりに動く</li>
+        <li>アプリケーション権限（Application）= アプリ自身として動く（ユーザー不在）</li>
+      </ul>
+    </div>
+
+    <div class="grid-2">
+      <div class="compare-card indigo-border">
+        <div class="cc-header">
+          <span class="cc-icon">👤</span>
+          <span class="cc-label">委任された<br>アクセス許可</span>
+        </div>
+        <span class="tag t-indigo" style="margin-bottom:12px;display:inline-block">Delegated Permission</span>
+        <ul class="cc-list">
+          <li>ユーザーがサインインして使う</li>
+          <li>アプリは「ユーザーの権限の範囲内」でのみ動作</li>
+          <li>ユーザーAが持っていない権限はアプリも使えない</li>
+          <li>例：「自分のメールを読む」</li>
+          <li>ユーザー同意 or 管理者同意が必要</li>
+        </ul>
+        <div class="info indigo" style="margin-top:12px">
+          <strong>📱 使われる場面</strong>
+          ユーザーがブラウザでサインインして使うWebアプリ、モバイルアプリなど
+        </div>
+      </div>
+      <div class="compare-card violet-border">
+        <div class="cc-header">
+          <span class="cc-icon">🤖</span>
+          <span class="cc-label">アプリケーション<br>権限</span>
+        </div>
+        <span class="tag t-violet" style="margin-bottom:12px;display:inline-block">Application Permission</span>
+        <ul class="cc-list">
+          <li>ユーザー不在でバックグラウンド動作</li>
+          <li>アプリ自身のIDで動作（ユーザーに依存しない）</li>
+          <li>テナント全体のデータにアクセス可能</li>
+          <li>例：「テナント全員のメールを読む」</li>
+          <li><strong>管理者同意のみ</strong>必要（ユーザー同意は存在しない）</li>
+        </ul>
+        <div class="info violet" style="margin-top:12px">
+          <strong>🤖 使われる場面</strong>
+          バックエンドサービス、自動化スクリプト、デーモン、今回のメールスキャンシステム
+        </div>
+      </div>
+    </div>
+
+    <div class="analogy">
+      <div class="a-label">🏦 権限の違いをたとえで理解</div>
+      <strong>委任（Delegated）</strong>：「代理人カード」。銀行員（アプリ）がお客様（ユーザー）の代わりに手続きするが、お客様が持っていない権限はできない。<br><br>
+      <strong>アプリケーション（Application）</strong>：「マスターキー」。夜間の警備員（アプリ）がビル全体を見回るためのキー。特定の人間の代理ではなく、アプリ自身の権限として動作する。
+    </div>
+
+    <div class="card">
+      <div class="card-title">よく使うMicrosoft Graph権限の例</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>権限名</th><th>種別</th><th>できること</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>Mail.Read</code></td>
+              <td><span class="tag t-indigo">Delegated</span></td>
+              <td>サインインしたユーザーのメールを読む</td>
+            </tr>
+            <tr>
+              <td><code>Mail.Read</code></td>
+              <td><span class="tag t-violet">Application</span></td>
+              <td>テナント全ユーザーのメールを読む</td>
+            </tr>
+            <tr>
+              <td><code>User.Read</code></td>
+              <td><span class="tag t-indigo">Delegated</span></td>
+              <td>サインインしたユーザーのプロフィールを読む</td>
+            </tr>
+            <tr>
+              <td><code>User.Read.All</code></td>
+              <td><span class="tag t-violet">Application</span></td>
+              <td>テナント全ユーザーのプロフィールを読む</td>
+            </tr>
+            <tr class="hl-row">
+              <td><code>User.ReadBasicAll</code></td>
+              <td><span class="tag t-violet">Application</span></td>
+              <td>全ユーザーの基本情報を読む（今回の受信者検証に相当）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info amber">
+        <strong>⚠️ 同じ名前でも種別によって影響範囲が全然違う</strong>
+        <code>Mail.Read</code> の Delegated はそのユーザーのメールだけ。Application は全員のメール。
+        アプリケーション権限のほうが強力なため、必ず管理者が同意する必要がある。
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 3: 同意の仕組み
+══════════════════════════════════════════ -->
+<div class="tab-pane" id="tab-consent">
+<div class="wrap">
+
+  <div class="section">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#d1fae5">✅</span>
+      同意（Consent）とは何か
+    </div>
+
+    <div class="card">
+      <div class="card-title">同意 = 「このアプリにこの権限を使わせることを許可する」という行為</div>
+      <p>アプリが Entra ID のリソースにアクセスするには、誰かが「OK」を出す必要がある。この「OK」を出すことが同意（Consent）。</p>
+      <div class="analogy">
+        <div class="a-label">📱 スマホアプリで体験済みのはず</div>
+        「このアプリはあなたの連絡先にアクセスしようとしています。許可しますか？」<br>
+        → これがユーザー同意のUX。企業向けでも同じ概念が使われている。
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="compare-card sky-border">
+        <div class="cc-header">
+          <span class="cc-icon">👤</span>
+          <span class="cc-label">ユーザー同意<br><span style="font-size:11px;font-weight:400;color:var(--c-muted)">User Consent</span></span>
+        </div>
+        <ul class="cc-list">
+          <li>個々のユーザーが自分の範囲内で許可</li>
+          <li>低リスクな委任権限（自分のデータのみ）</li>
+          <li>サインイン時に「許可しますか？」画面が出る</li>
+          <li>管理者が設定を許可している場合のみ可能</li>
+          <li>非対話型アプリには存在しない</li>
+        </ul>
+      </div>
+      <div class="compare-card indigo-border">
+        <div class="cc-header">
+          <span class="cc-icon">🛡️</span>
+          <span class="cc-label">管理者同意<br><span style="font-size:11px;font-weight:400;color:var(--c-muted)">Admin Consent</span></span>
+        </div>
+        <ul class="cc-list">
+          <li>テナント管理者（Global Admin等）が許可</li>
+          <li>テナント全体に対して有効</li>
+          <li>高権限の委任権限・全アプリケーション権限</li>
+          <li>一度管理者同意すれば全ユーザーに適用</li>
+          <li>Entra 管理センターで「管理者の同意の付与」ボタン</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title" style="margin-top:8px">
+        <span class="sec-icon" style="background:#fef3c7">🗺️</span>
+        どの同意が必要か — 全パターン一覧
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>権限種別</th>
+              <th>アプリ種別</th>
+              <th>ユーザー同意</th>
+              <th>管理者同意</th>
+              <th>備考</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag t-indigo">Delegated</span><br>低リスク</td>
+              <td>対話型</td>
+              <td class="ok">✓ 可</td>
+              <td class="ok">✓ 可</td>
+              <td>テナント設定次第でどちらも可</td>
+            </tr>
+            <tr>
+              <td><span class="tag t-indigo">Delegated</span><br>高リスク</td>
+              <td>対話型</td>
+              <td class="ng">✗ 不可</td>
+              <td class="ok">✓ 必要</td>
+              <td>管理者同意が必須な権限もある</td>
+            </tr>
+            <tr class="hl-row">
+              <td><span class="tag t-violet">Application</span></td>
+              <td>非対話型</td>
+              <td class="ng">✗ 存在しない</td>
+              <td class="ok">✓ 必須</td>
+              <td>ユーザー不在のため管理者同意のみ</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info red">
+        <strong>🚨 試験頻出ポイント</strong>
+        アプリケーション権限（Application）= 管理者同意のみ。ユーザー同意は選択肢にすら存在しない。<br>
+        「ユーザー同意と管理者同意の両方」を確認せよ、という選択肢は Application 権限の場合は<strong>誤り</strong>。
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 4: 対話型 vs 非対話型
+══════════════════════════════════════════ -->
+<div class="tab-pane" id="tab-interactive">
+<div class="wrap">
+
+  <div class="section">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#f5f3ff">🤖</span>
+      対話型 vs 非対話型アプリ
+    </div>
+
+    <div class="grid-2">
+      <div class="compare-card indigo-border">
+        <div class="cc-header">
+          <span class="cc-icon">👨‍💻</span>
+          <span class="cc-label">対話型<br><span style="font-size:11px;font-weight:400;color:var(--c-muted)">Interactive / Delegated</span></span>
+        </div>
+        <ul class="cc-list">
+          <li>ユーザーがブラウザ・アプリでサインイン</li>
+          <li>ログイン画面 / 同意画面が表示される</li>
+          <li>ユーザーのIDトークンを使って動作</li>
+          <li>権限はそのユーザーの範囲内</li>
+          <li>例：Webアプリ、Teams アドイン、SaaS SSO</li>
+        </ul>
+      </div>
+      <div class="compare-card violet-border">
+        <div class="cc-header">
+          <span class="cc-icon">⚙️</span>
+          <span class="cc-label">非対話型<br><span style="font-size:11px;font-weight:400;color:var(--c-muted)">Non-interactive / Daemon</span></span>
+        </div>
+        <ul class="cc-list">
+          <li>バックグラウンドで自動実行</li>
+          <li>ログイン画面・同意画面なし</li>
+          <li>クライアントID + シークレット or 証明書で認証</li>
+          <li>アプリ自身のIDとして動作（ユーザー不在）</li>
+          <li>例：バッチ処理、メールスキャン、定期レポート</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">認証フローの違い（図解）</div>
+      <p style="font-weight:700;font-size:13px;margin-bottom:12px;color:var(--c-slate)">対話型（委任）フロー</p>
+      <div class="flow-wrap">
+        <div class="flow">
+          <div class="fbox fb-indigo"><span class="fl">ユーザー</span>ブラウザで<br>アクセス</div>
+          <div class="farrow">→<span>ログイン要求</span></div>
+          <div class="fbox fb-violet"><span class="fl">Entra ID</span>サインイン画面<br>→同意画面</div>
+          <div class="farrow">→<span>アクセストークン</span></div>
+          <div class="fbox fb-sky"><span class="fl">アプリ</span>ユーザーの代わりに<br>API呼び出し</div>
+        </div>
+      </div>
+
+      <p style="font-weight:700;font-size:13px;margin:20px 0 12px;color:var(--c-slate)">非対話型（アプリケーション）フロー</p>
+      <div class="flow-wrap">
+        <div class="flow">
+          <div class="fbox fb-violet"><span class="fl">アプリ（サービス）</span>クライアントID<br>+シークレット</div>
+          <div class="farrow">→<span>クライアント認証</span></div>
+          <div class="fbox fb-indigo"><span class="fl">Entra ID</span>管理者同意済み<br>権限を確認</div>
+          <div class="farrow">→<span>アクセストークン</span></div>
+          <div class="fbox fb-emerald"><span class="fl">Graph API</span>テナント全体の<br>データにアクセス</div>
+        </div>
+      </div>
+      <p style="font-size:13px;color:var(--c-muted);margin-top:10px">
+        非対話型ではユーザーのステップが完全に存在しない。「管理者がいつ同意したか」は事前設定で決まる。
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="tag t-violet">今回の問題</span> メールスキャンシステムが非対話型な理由</div>
+      <div class="steps">
+        <div class="step">
+          <div class="s-num">1</div>
+          <div class="s-body">
+            <strong>メールが届いたとき自動でスキャンする必要がある</strong>
+            <p>ユーザーが「スキャンして」とボタンを押すわけではない。メールが来るたびに自動でテナントのディレクトリを参照して受信者アドレスを検証する。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="s-num">2</div>
+          <div class="s-body">
+            <strong>特定のユーザーとしてではなく、テナント全体にアクセスする</strong>
+            <p>「Aさんのメール」「Bさんのメール」と一人ひとりの委任では動けない。テナント内の全受信者を確認できる Application 権限が必要。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="s-num">3</div>
+          <div class="s-body">
+            <strong>24時間365日、ユーザーのサインインに依存せず動く</strong>
+            <p>バックグラウンドサービス = 非対話型 = Application権限 = 管理者同意のみ。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 5: 問題解説
+══════════════════════════════════════════ -->
+<div class="tab-pane" id="tab-exam">
+<div class="wrap">
+
+  <div class="section">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#fee2e2">📝</span>
+      問題シナリオの完全解析
+    </div>
+
+    <div class="scenario-box">
+      <h3>📋 シナリオ整理</h3>
+      <ul>
+        <li>サードパーティ製メールスキャンシステムを O365 の前段で運用</li>
+        <li>SSO・高度なスキャン・レポート・隔離機能を備える</li>
+        <li><strong>非対話型</strong>の Entra エンタープライズアプリ経由でテナントに接続</li>
+        <li>メール送信前に送信元アドレスを検証（受信者検証機能）</li>
+      </ul>
+      <div class="prob">
+        🎯 確認したいこと：エンタープライズアプリに構成されている権限が正しいか<br>
+        → どの2つの操作を実施すべきか？
+      </div>
+    </div>
+
+    <div class="info violet" style="margin-bottom:20px">
+      <strong>🔍 問題を解くためのキー情報</strong>
+      「非対話型」= アプリケーション権限 = 管理者同意のみ（ユーザー同意は存在しない）<br>
+      「エンタープライズアプリの権限を確認する場所」= Microsoft Entra ID（Entra管理センター）
+    </div>
+
+    <div class="acc-list">
+
+      <div class="acc">
+        <div class="acc-head" onclick="toggleAcc(this)">
+          <span class="verdict v-ng">✗ 不正解</span>
+          <span class="acc-q">① 正しいユーザー同意と管理者の同意の権限が設定されていることを確認する</span>
+          <span class="acc-arrow">▼</span>
+        </div>
+        <div class="acc-body">
+          <p style="margin-bottom:10px">
+            「ユーザー同意 + 管理者同意の両方」= <strong>委任されたアクセス許可（Delegated）</strong>のシナリオ。<br>
+            今回は非対話型アプリなので <strong>Application 権限</strong>を使っており、<strong>ユーザー同意という概念が存在しない</strong>。
+          </p>
+          <div class="info red">
+            <strong>なぜユーザー同意が存在しないのか</strong>
+            ユーザー同意は「サインインしたユーザーが自分の代わりにアプリを動かすことを許可する」行為。
+            非対話型アプリにはサインインするユーザー自体がいないため、ユーザー同意のプロセスが物理的に発生しない。
+          </div>
+        </div>
+      </div>
+
+      <div class="acc">
+        <div class="acc-head" onclick="toggleAcc(this)">
+          <span class="verdict v-ng">✗ 不正解</span>
+          <span class="acc-q">② Microsoft Defender for Cloud でエンタープライズアプリケーションを確認する</span>
+          <span class="acc-arrow">▼</span>
+        </div>
+        <div class="acc-body">
+          <p style="margin-bottom:10px">
+            <strong>Microsoft Defender for Cloud</strong> は Azure リソースのセキュリティ状態・脆弱性・推奨事項を監視するサービス。<br>
+            エンタープライズアプリケーションの権限設定を確認・管理する場所ではない。
+          </p>
+          <div class="tbl-wrap" style="margin-top:10px">
+            <table>
+              <thead><tr><th>サービス</th><th>主な用途</th><th>エンタープライズアプリ管理</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>Defender for Cloud</td>
+                  <td>Azureリソースのセキュリティ監視・推奨事項</td>
+                  <td class="ng">✗ 対象外</td>
+                </tr>
+                <tr>
+                  <td>Microsoft Entra ID</td>
+                  <td>ID管理・アプリ登録・権限・同意の管理</td>
+                  <td class="ok">✓ ここが正解</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="acc">
+        <div class="acc-head" onclick="toggleAcc(this)">
+          <span class="verdict v-ok">✓ 正解</span>
+          <span class="acc-q">③ 正しい管理者の同意の権限のみが設定されていることを確認する</span>
+          <span class="acc-arrow">▼</span>
+        </div>
+        <div class="acc-body">
+          <p style="margin-bottom:10px">
+            非対話型アプリ（今回のメールスキャンシステム）は <strong>Application 権限</strong>を使用。<br>
+            Application 権限には<strong>管理者同意のみ</strong>が必要・存在する。
+          </p>
+          <div class="info emerald">
+            <strong>✅ 「のみ」という表現がポイント</strong>
+            ユーザー同意 + 管理者同意の両方ではなく、<strong>管理者同意のみ</strong>。<br>
+            非対話型アプリに対してユーザー同意権限が設定されている場合、それは誤設定・不要な権限。
+            むしろセキュリティリスクになる可能性もある（最小権限の原則）。
+          </div>
+          <div style="margin-top:12px">
+            <p style="font-size:13px; color:var(--c-muted)">確認場所：Entra管理センター → エンタープライズアプリケーション → 対象アプリ → 「APIのアクセス許可」→<br>
+            「管理者の同意が与えられています」列が ✓ になっているか確認</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="acc">
+        <div class="acc-head" onclick="toggleAcc(this)">
+          <span class="verdict v-ok">✓ 正解</span>
+          <span class="acc-q">④ Microsoft Entra ID でエンタープライズアプリケーションを確認する</span>
+          <span class="acc-arrow">▼</span>
+        </div>
+        <div class="acc-body">
+          <p style="margin-bottom:10px">
+            エンタープライズアプリケーションの権限設定は<strong>Microsoft Entra ID（Entra管理センター）で管理する</strong>。<br>
+            これが「どこで確認するか」という操作場所の正解。
+          </p>
+          <div class="info sky">
+            <strong>📍 確認の具体的な手順</strong>
+            1. Entra管理センター（entra.microsoft.com）にアクセス<br>
+            2. エンタープライズアプリケーション → すべてのアプリケーション<br>
+            3. 対象アプリ（メールスキャンシステム）を選択<br>
+            4. セキュリティ → 「アクセス許可」または「APIのアクセス許可」タブ<br>
+            5. 「アプリケーション」権限に管理者同意が付与されているか確認
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#d1fae5">💡</span>
+      正解の組み合わせまとめ
+    </div>
+    <div class="kp-banner">
+      <h3>正解：③ + ④</h3>
+      <ul>
+        <li>③「管理者同意のみ」= 非対話型アプリには Application 権限 + 管理者同意のみ存在する（権限種別の正確性確認）</li>
+        <li>④「Entra ID で確認」= エンタープライズアプリの権限管理はEntra ID上で行う（確認場所の正確性）</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 6: 試験対策
+══════════════════════════════════════════ -->
+<div class="tab-pane" id="tab-tips">
+<div class="wrap">
+
+  <div class="section">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#eef2ff">🎯</span>
+      パターン認識と解き方のコツ
+    </div>
+
+    <div class="tips-grid">
+      <div class="tip">
+        <h4>📌 パターン①：非対話型キーワード検出</h4>
+        <p>「非対話型」「バックグラウンド」「デーモン」「サービス」「自動化」「スケジュール実行」→ Application権限 + 管理者同意のみ、と即座に結びつける。</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン②：確認場所の問題</h4>
+        <p>エンタープライズアプリ / アプリ登録 / 権限 / 同意 → 確認場所は <strong>Microsoft Entra ID</strong>（Entra管理センター）。Defender for CloudやAzureポータルのリソースではない。</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン③：両方 vs のみ</h4>
+        <p>「ユーザー同意と管理者同意の<strong>両方</strong>」→ Delegated権限のシナリオ（対話型）<br>
+        「管理者同意<strong>のみ</strong>」→ Application権限のシナリオ（非対話型）</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン④：Defender for Cloud の罠</h4>
+        <p>「エンタープライズアプリを確認する」設問にDefender for Cloudが出てきたら誤り選択肢。Defender for CloudはAzureリソースのセキュリティ監視専用。</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン⑤：最小権限の原則</h4>
+        <p>非対話型アプリにユーザー同意権限が設定されているのは<strong>過剰設定（誤り）</strong>。問われたら「不要な権限が付いている → 削除せよ」が正解になることがある。</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン⑥：テナント設定との関係</h4>
+        <p>管理者はテナント全体でユーザー同意を禁止することもできる。「ユーザーはアプリに同意できない設定」の場合、全アプリが管理者同意必須になる。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#d1fae5">🧠</span>
+      全体の関係を一枚で整理
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>アプリ種別</th>
+            <th>権限種別</th>
+            <th>ユーザー同意</th>
+            <th>管理者同意</th>
+            <th>今回の問題</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>対話型</td>
+            <td><span class="tag t-indigo">Delegated</span></td>
+            <td class="ok">✓ あり</td>
+            <td class="ok">✓ あり</td>
+            <td class="na">— 該当しない</td>
+          </tr>
+          <tr class="hl-row">
+            <td>非対話型</td>
+            <td><span class="tag t-violet">Application</span></td>
+            <td class="ng">✗ 存在しない</td>
+            <td class="ok">✓ 必須</td>
+            <td class="ok">✓ これ</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="info violet">
+      <strong>🔑 一言で覚える</strong>
+      非対話型アプリ → Application権限 → 管理者同意のみ → 確認場所はEntra ID<br>
+      この4段論法を体に染み込ませると類似問題が全部解ける。
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════ FOOTER ══════════════ -->
+<footer class="site-footer">
+  Entra エンタープライズアプリ・権限・同意 完全攻略ガイド — SC-300 / AZ-500 / MS-102 対応
+</footer>
+
+<script>
+function switchTab(id) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  // スムーズにページトップへ
+  document.getElementById('tabNav').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function toggleAcc(head) {
+  head.classList.toggle('open');
+  head.nextElementSibling.classList.toggle('open');
+}
+</script>
+</body>
+</html>
