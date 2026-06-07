@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Azure API Management セキュリティ完全攻略</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;0,800&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────
+   TOKENS
+───────────────────────────── */
+:root {
+  --bg:       #f7f8fc;
+  --sur:      #ffffff;
+  --card:     #ffffff;
+  --brd:      #e4e7f0;
+  --brd-deep: #c8cfe0;
+
+  --blue:     #1d4ed8;
+  --blue-m:   #3b82f6;
+  --blue-l:   #93c5fd;
+  --blue-xl:  #eff6ff;
+  --indigo:   #4338ca;
+  --indigo-xl:#eef2ff;
+  --orange:   #ea580c;
+  --orange-xl:#fff7ed;
+  --green:    #16a34a;
+  --green-xl: #f0fdf4;
+  --green-b:  #86efac;
+  --red:      #dc2626;
+  --red-xl:   #fef2f2;
+  --amber:    #d97706;
+  --amber-xl: #fffbeb;
+  --purple:   #7c3aed;
+  --purple-xl:#f5f3ff;
+  --slate:    #0f172a;
+
+  --txt:      #1e293b;
+  --muted:    #64748b;
+  --dim:      #94a3b8;
+
+  --mono: 'JetBrains Mono', monospace;
+  --head: 'DM Sans', 'Noto Sans JP', sans-serif;
+  --body: 'Noto Sans JP', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: var(--body);
+  font-size: 14.5px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+ul { list-style: none; }
+
+/* ─────────────────────────────
+   HEADER
+───────────────────────────── */
+.hd {
+  background: var(--slate);
+  color: #fff;
+  padding: clamp(40px, 9vw, 72px) 20px clamp(36px, 8vw, 64px);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.hd::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 60%, rgba(29,78,216,.35), transparent),
+    radial-gradient(ellipse 50% 40% at 80% 30%, rgba(234,88,12,.2), transparent);
+}
+.hd::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, #3b82f6, #6366f1, #ea580c);
+}
+.hd-in { position: relative; max-width: 720px; margin: 0 auto; }
+.eyebrow {
+  display: inline-block;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: #93c5fd; border: 1px solid rgba(147, 197, 253, .35);
+  border-radius: 20px; padding: 4px 14px; margin-bottom: 20px;
+}
+.hd h1 {
+  font-family: var(--head);
+  font-size: clamp(22px, 5vw, 40px); font-weight: 800;
+  line-height: 1.15; letter-spacing: -.025em; margin-bottom: 14px;
+}
+.hd h1 .hl-o { color: #fb923c; }
+.hd h1 .hl-b { color: #93c5fd; }
+.hd p { color: #94a3b8; font-size: clamp(13px, 2.5vw, 14.5px); line-height: 1.7; }
+
+/* ─────────────────────────────
+   TAB NAV
+───────────────────────────── */
+.tnav {
+  position: sticky; top: 0; z-index: 100;
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+  display: flex; overflow-x: auto; scrollbar-width: none;
+  padding: 0 12px;
+}
+.tnav::-webkit-scrollbar { display: none; }
+.tbtn {
+  flex-shrink: 0; padding: 13px 16px;
+  font-family: var(--body); font-size: 12.5px; font-weight: 500;
+  color: #64748b; background: none; border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer; white-space: nowrap;
+  transition: color .2s, border-color .2s;
+  margin-bottom: -1px;
+}
+.tbtn:hover { color: #e2e8f0; }
+.tbtn.act { color: #93c5fd; border-bottom-color: #3b82f6; font-weight: 700; }
+
+/* ─────────────────────────────
+   PANE / LAYOUT
+───────────────────────────── */
+.pane { display: none; }
+.pane.act { display: block; animation: fup .3s ease both; }
+@keyframes fup { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+.wrap { max-width: 880px; margin: 0 auto; padding: 36px 16px 72px; }
+.sec { margin-bottom: 48px; }
+
+/* ─────────────────────────────
+   SECTION TITLE
+───────────────────────────── */
+.st {
+  font-family: var(--head);
+  font-size: clamp(17px, 3vw, 21px); font-weight: 700;
+  color: var(--slate); margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding-bottom: 14px; border-bottom: 2px solid var(--brd);
+}
+.si {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; flex-shrink: 0;
+}
+
+/* ─────────────────────────────
+   CARD
+───────────────────────────── */
+.card {
+  background: var(--sur);
+  border: 1px solid var(--brd); border-radius: 12px;
+  padding: clamp(18px, 4vw, 26px); margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+.card:last-child { margin-bottom: 0; }
+.ct {
+  font-family: var(--head); font-size: 15px; font-weight: 700;
+  margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  color: var(--slate);
+}
+.card p { color: var(--muted); font-size: 13.5px; line-height: 1.8; }
+
+/* ─────────────────────────────
+   TAGS
+───────────────────────────── */
+.tag {
+  display: inline-block; font-family: var(--mono);
+  font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+}
+.tb  { background: var(--blue-xl);   color: var(--blue); }
+.ti  { background: var(--indigo-xl); color: var(--indigo); }
+.to  { background: var(--orange-xl); color: var(--orange); }
+.tg  { background: var(--green-xl);  color: var(--green); }
+.tr  { background: var(--red-xl);    color: var(--red); }
+.ta  { background: var(--amber-xl);  color: var(--amber); }
+.tp  { background: var(--purple-xl); color: var(--purple); }
+.tsl { background: #f1f5f9;          color: var(--slate); }
+
+/* ─────────────────────────────
+   INFO BOXES
+───────────────────────────── */
+.ib { border-radius: 8px; padding: 14px 18px; font-size: 13.5px; line-height: 1.75; margin: 12px 0; }
+.ib strong { display: block; margin-bottom: 5px; font-size: 13px; }
+.ib.blue   { background: var(--blue-xl);   border: 1px solid var(--blue-l); }
+.ib.blue   strong { color: var(--blue); }
+.ib.green  { background: var(--green-xl);  border: 1px solid var(--green-b); }
+.ib.green  strong { color: var(--green); }
+.ib.red    { background: var(--red-xl);    border: 1px solid #fca5a5; }
+.ib.red    strong { color: var(--red); }
+.ib.amber  { background: var(--amber-xl);  border: 1px solid #fcd34d; }
+.ib.amber  strong { color: var(--amber); }
+.ib.orange { background: var(--orange-xl); border: 1px solid #fdba74; }
+.ib.orange strong { color: var(--orange); }
+.ib.purple { background: var(--purple-xl); border: 1px solid #c4b5fd; }
+.ib.purple strong { color: var(--purple); }
+.ib.indigo { background: var(--indigo-xl); border: 1px solid #a5b4fc; }
+.ib.indigo strong { color: var(--indigo); }
+
+.analogy {
+  background: linear-gradient(135deg, #fffbeb, #fff7ed);
+  border: 1px solid #fde68a; border-left: 4px solid var(--amber);
+  border-radius: 8px; padding: 16px 18px;
+  font-size: 13.5px; line-height: 1.8; margin: 14px 0; color: var(--muted);
+}
+.analogy .al { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--amber); margin-bottom: 6px; display: block; }
+
+/* ─────────────────────────────
+   GRID
+───────────────────────────── */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
+@media (max-width: 640px) { .g2 { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .g3 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) { .g3 { grid-template-columns: 1fr; } }
+
+/* ─────────────────────────────
+   FEATURE CARDS (colored)
+───────────────────────────── */
+.fc {
+  background: var(--sur); border: 1px solid var(--brd);
+  border-radius: 12px; padding: 20px;
+  transition: transform .2s, box-shadow .2s;
+}
+.fc:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+.fc.b { border-top: 4px solid var(--blue); }
+.fc.i { border-top: 4px solid var(--indigo); }
+.fc.g { border-top: 4px solid var(--green); }
+.fc.o { border-top: 4px solid var(--orange); }
+.fc.r { border-top: 4px solid var(--red); }
+.fc.p { border-top: 4px solid var(--purple); }
+.fc h3 { font-family: var(--head); font-size: 14.5px; font-weight: 700; color: var(--slate); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.fc ul li {
+  font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--brd);
+  display: flex; gap: 8px; align-items: flex-start;
+  color: var(--muted); line-height: 1.6;
+}
+.fc ul li:last-child { border-bottom: none; }
+.fc ul li::before { content: '▸'; color: var(--blue-m); flex-shrink: 0; font-size: 11px; margin-top: 2px; }
+
+/* ─────────────────────────────
+   APIM LAYER DIAGRAM
+───────────────────────────── */
+.layer-diag { margin: 16px 0; }
+.ld-row {
+  display: flex; align-items: center; gap: 0;
+  margin-bottom: 0;
+}
+.ld-box {
+  flex: 1; border-radius: 10px; border: 2px solid;
+  padding: 12px 14px; text-align: center; font-size: 12.5px;
+  font-weight: 600; line-height: 1.4; position: relative;
+}
+.ld-box .lb { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: .09em; display: block; margin-bottom: 4px; }
+.lb-client  { border-color: #93c5fd; background: var(--blue-xl); }
+.lb-client  .lb { color: var(--blue); }
+.lb-apim    { border-color: #fb923c; background: var(--orange-xl); }
+.lb-apim    .lb { color: var(--orange); }
+.lb-backend { border-color: #86efac; background: var(--green-xl); }
+.lb-backend .lb { color: var(--green); }
+.ld-arrow {
+  flex-shrink: 0; padding: 0 8px; color: var(--dim);
+  font-size: 20px; display: flex; flex-direction: column;
+  align-items: center; gap: 2px;
+}
+.ld-arrow small { font-family: var(--mono); font-size: 9px; color: var(--dim); white-space: nowrap; }
+
+/* ─────────────────────────────
+   SECURITY LAYERS (visual)
+───────────────────────────── */
+.sec-layers { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
+.sl {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px; border-radius: 10px; border: 1px solid;
+}
+.sl.auth   { background: var(--blue-xl);   border-color: var(--blue-l); }
+.sl.net    { background: var(--green-xl);  border-color: var(--green-b); }
+.sl.access { background: var(--indigo-xl); border-color: #a5b4fc; }
+.sl.bad    { background: var(--red-xl);    border-color: #fca5a5; }
+.sl-icon { font-size: 22px; flex-shrink: 0; }
+.sl-body { flex: 1; }
+.sl-body strong { display: block; font-size: 13.5px; font-weight: 700; margin-bottom: 3px; }
+.sl.auth   .sl-body strong { color: var(--blue); }
+.sl.net    .sl-body strong { color: var(--green); }
+.sl.access .sl-body strong { color: var(--indigo); }
+.sl.bad    .sl-body strong { color: var(--red); }
+.sl-body p { font-size: 12.5px; color: var(--muted); }
+.sl-badge { font-family: var(--mono); font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; flex-shrink: 0; white-space: nowrap; }
+.sl.auth   .sl-badge { background: var(--blue-xl); color: var(--blue); border: 1px solid var(--blue-l); }
+.sl.net    .sl-badge { background: var(--green-xl); color: var(--green); border: 1px solid var(--green-b); }
+.sl.access .sl-badge { background: var(--indigo-xl); color: var(--indigo); border: 1px solid #a5b4fc; }
+.sl.bad    .sl-badge { background: var(--red-xl); color: var(--red); border: 1px solid #fca5a5; }
+
+/* ─────────────────────────────
+   STEP LIST
+───────────────────────────── */
+.steps { display: flex; flex-direction: column; }
+.step { display: flex; gap: 14px; position: relative; }
+.step:not(:last-child)::before {
+  content: ''; position: absolute; left: 16px; top: 35px;
+  width: 2px; height: calc(100% - 4px);
+  background: linear-gradient(180deg, var(--blue-m), transparent);
+}
+.sn {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--blue); color: #fff;
+  font-family: var(--mono); font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; z-index: 1; box-shadow: 0 2px 8px rgba(29,78,216,.35);
+}
+.sb { padding: 4px 0 26px; flex: 1; }
+.sb strong { display: block; font-size: 14px; font-weight: 700; margin-bottom: 5px; color: var(--slate); }
+.sb p { color: var(--muted); font-size: 13px; }
+
+/* ─────────────────────────────
+   TABLE
+───────────────────────────── */
+.tw { overflow-x: auto; margin-bottom: 14px; border-radius: 10px; border: 1px solid var(--brd); box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead tr { background: var(--slate); }
+th {
+  color: #fff; padding: 10px 14px; text-align: left;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .09em;
+  font-weight: 600; text-transform: uppercase; white-space: nowrap;
+  border-bottom: 1px solid #1e293b;
+}
+td { padding: 10px 14px; border-bottom: 1px solid var(--brd); color: var(--muted); vertical-align: top; line-height: 1.6; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg); }
+.ok  { color: var(--green); font-weight: 700; }
+.ng  { color: var(--red); }
+.na  { color: var(--dim); }
+.hl td { background: var(--blue-xl); color: var(--txt); font-weight: 600; }
+.hl-r td { background: var(--red-xl); }
+code { font-family: var(--mono); font-size: 11.5px; background: #f1f5f9; border: 1px solid var(--brd); padding: 1px 6px; border-radius: 4px; color: var(--blue); }
+
+/* ─────────────────────────────
+   ACCORDION
+───────────────────────────── */
+.acc-list { display: flex; flex-direction: column; gap: 10px; }
+.acc { background: var(--sur); border: 1px solid var(--brd); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.ah { display: flex; align-items: center; gap: 12px; padding: 15px 18px; cursor: pointer; user-select: none; transition: background .15s; }
+.ah:hover { background: var(--bg); }
+.verd { font-family: var(--mono); font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px; flex-shrink: 0; }
+.v-ok { background: var(--green-xl); color: var(--green); border: 1px solid var(--green-b); }
+.v-ng { background: var(--red-xl);   color: var(--red);   border: 1px solid #fca5a5; }
+.aq { font-size: 13.5px; font-weight: 500; flex: 1; line-height: 1.5; color: var(--txt); }
+.aa { color: var(--dim); font-size: 11px; margin-left: auto; flex-shrink: 0; transition: transform .2s; }
+.ah.op .aa { transform: rotate(180deg); }
+.ab { display: none; padding: 0 18px 18px; font-size: 13.5px; color: var(--muted); line-height: 1.8; border-top: 1px solid var(--brd); }
+.ab.op { display: block; padding-top: 16px; }
+
+/* ─────────────────────────────
+   SCENARIO
+───────────────────────────── */
+.scen {
+  background: var(--slate); color: #e2e8f0;
+  border-radius: 12px; padding: clamp(18px, 4vw, 28px);
+  margin-bottom: 24px;
+}
+.scen h3 { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: #93c5fd; margin-bottom: 14px; }
+.scen ul li { font-size: 13.5px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.07); display: flex; gap: 10px; line-height: 1.65; }
+.scen ul li:last-child { border-bottom: none; }
+.scen ul li::before { content: '▸'; color: #60a5fa; flex-shrink: 0; margin-top: 2px; }
+.scen .prob { margin-top: 14px; background: rgba(234,88,12,.12); border: 1px solid rgba(234,88,12,.3); border-radius: 7px; padding: 12px 16px; font-size: 13px; color: #fdba74; line-height: 1.65; }
+
+/* ─────────────────────────────
+   KEY BANNER
+───────────────────────────── */
+.kb {
+  background: linear-gradient(135deg, var(--blue-xl), var(--indigo-xl));
+  border: 1px solid var(--blue-l); border-radius: 12px;
+  padding: clamp(18px, 4vw, 26px); margin-bottom: 20px;
+}
+.kb h3 { font-family: var(--head); font-size: 16px; font-weight: 700; color: var(--blue); margin-bottom: 12px; }
+.kb ul li { font-size: 13.5px; padding: 6px 0; border-bottom: 1px solid rgba(29,78,216,.1); display: flex; gap: 10px; line-height: 1.65; }
+.kb ul li:last-child { border-bottom: none; }
+.kb ul li::before { content: '→'; color: var(--blue-m); flex-shrink: 0; }
+
+/* ─────────────────────────────
+   TIPS
+───────────────────────────── */
+.tgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.tip { background: var(--sur); border: 1px solid var(--brd); border-radius: 10px; border-top: 3px solid var(--blue); padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.tip h4 { font-family: var(--head); font-size: 13.5px; font-weight: 700; margin-bottom: 8px; color: var(--slate); }
+.tip p { font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+
+/* ─────────────────────────────
+   FLOW WRAP (horizontal)
+───────────────────────────── */
+.fw { overflow-x: auto; padding: 8px 0; margin: 14px 0; }
+.flow { display: flex; align-items: center; min-width: 380px; gap: 0; }
+.fb { flex: 1; border: 2px solid var(--brd); border-radius: 10px; padding: 12px 10px; text-align: center; font-size: 12px; font-weight: 500; background: var(--sur); line-height: 1.4; }
+.fb .fl { font-family: var(--mono); font-size: 9px; color: var(--dim); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .08em; }
+.fb.bb { border-color: var(--blue-m); background: var(--blue-xl); }
+.fb.bo { border-color: var(--orange); background: var(--orange-xl); }
+.fb.bg { border-color: var(--green); background: var(--green-xl); }
+.fb.br { border-color: var(--red); background: var(--red-xl); }
+.fa { flex-shrink: 0; padding: 0 6px; color: var(--dim); font-size: 18px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.fa small { font-family: var(--mono); font-size: 9px; color: var(--dim); white-space: nowrap; }
+
+/* ─────────────────────────────
+   FOOTER
+───────────────────────────── */
+footer { background: var(--slate); color: #475569; text-align: center; padding: 20px; font-family: var(--mono); font-size: 11px; }
+
+@media (max-width: 480px) {
+  .ah { padding: 13px 14px; gap: 9px; }
+  .aq { font-size: 13px; }
+  .card { padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="hd">
+  <div class="hd-in">
+    <div class="eyebrow">AZ-204 / AZ-305 / AZ-500 対応</div>
+    <h1>Azure <span class="hl-o">API Management</span><br><span class="hl-b">セキュリティ</span>完全攻略</h1>
+    <p>OAuth・プライベートエンドポイント・サブスクリプションキーの仕組みをゼロから理解する</p>
+  </div>
+</header>
+
+<!-- ── TABS ── -->
+<nav class="tnav" id="tnav">
+  <button class="tbtn act" onclick="sw('what')">① APIとAPIMとは</button>
+  <button class="tbtn" onclick="sw('sec')">② セキュリティの種類</button>
+  <button class="tbtn" onclick="sw('features')">③ 各機能の詳細</button>
+  <button class="tbtn" onclick="sw('bad')">④ やってはいけないこと</button>
+  <button class="tbtn" onclick="sw('exam')">⑤ 問題解説</button>
+  <button class="tbtn" onclick="sw('tips')">⑥ 試験対策</button>
+</nav>
+
+<!-- ═══ TAB 1: APIとAPIMとは ═══ -->
+<div class="pane act" id="p-what"><div class="wrap">
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:#eff6ff">🔌</span>API とは何か</div>
+
+    <div class="card">
+      <div class="ct"><span class="tag tb">API</span> Application Programming Interface</div>
+      <p>アプリケーション同士が会話するための「窓口」。クライアントアプリが「〇〇のデータをください」とリクエストを送り、サーバーが「はいどうぞ」とデータを返す仕組み。</p>
+      <div class="analogy">
+        <span class="al">🍽️ たとえ話</span>
+        レストランの注文システム。お客様（クライアントアプリ）が注文票（リクエスト）をウェイター（API）に渡し、厨房（バックエンドサーバー）が料理（データ）を作って返す。<br>
+        APIは「何を注文できるか・どう注文するか」を定めたルールブック。
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:#fff7ed">🚦</span>Azure API Management とは</div>
+
+    <div class="card">
+      <div class="ct"><span class="tag to">APIM</span> Azure API Management</div>
+      <p>会社が提供する複数のAPIを一元管理するゲートウェイサービス。クライアントとバックエンドAPIの間に立ち、認証・流量制限・ログ・変換などを横断的に管理する。</p>
+      <div class="analogy">
+        <span class="al">🏢 たとえ話</span>
+        大企業のセキュリティゲート（守衛室）。来訪者（クライアント）が社員証（APIキー・トークン）を提示し、目的の部署（バックエンドAPI）に案内するかどうかを判断する。<br>
+        全来訪者の記録もつけて（ログ）、混雑時には入館制限（流量制御）もできる。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ct">APIM が担う役割（全体像）</div>
+      <div class="fw">
+        <div class="flow">
+          <div class="fb bb"><span class="fl">クライアントアプリ</span>スマホ・Web・<br>外部システム</div>
+          <div class="fa">→<small>リクエスト</small></div>
+          <div class="fb bo">
+            <span class="fl">Azure APIM（ゲートウェイ）</span>
+            ① 認証チェック<br>② 流量制限<br>③ 変換・ルーティング
+          </div>
+          <div class="fa">→<small>転送</small></div>
+          <div class="fb bg"><span class="fl">バックエンドAPI</span>社内マイクロ<br>サービス・DB</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="g3">
+      <div class="fc b">
+        <h3>🔑 認証・認可</h3>
+        <ul>
+          <li>OAuth 2.0 / OpenID Connect</li>
+          <li>サブスクリプションキー</li>
+          <li>クライアント証明書</li>
+        </ul>
+      </div>
+      <div class="fc g">
+        <h3>🌐 ネットワーク保護</h3>
+        <ul>
+          <li>プライベートエンドポイント</li>
+          <li>仮想ネットワーク統合</li>
+          <li>IPフィルタリング</li>
+        </ul>
+      </div>
+      <div class="fc o">
+        <h3>📊 監視・制御</h3>
+        <ul>
+          <li>流量制限（Rate Limit）</li>
+          <li>クォータ管理</li>
+          <li>ログ・分析</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div></div>
+
+<!-- ═══ TAB 2: セキュリティの種類 ═══ -->
+<div class="pane" id="p-sec"><div class="wrap">
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:#eff6ff">🛡️</span>APIセキュリティの3つの層</div>
+
+    <div class="ib blue" style="margin-bottom:20px">
+      <strong>💡 APIセキュリティは「誰か」「どこから」「何ができるか」の3層で考える</strong>
+      認証（誰か）・ネットワーク制御（どこから）・アクセス制御（何ができるか）の組み合わせが鉄則。
+    </div>
+
+    <div class="sec-layers">
+      <div class="sl auth">
+        <div class="sl-icon">🔐</div>
+        <div class="sl-body">
+          <strong>認証・認可（Authentication / Authorization）</strong>
+          <p>「誰がアクセスしているか」を確認し「何をしてよいか」を制御する。OAuth 2.0、APIキー、サブスクリプションキーなど。</p>
+        </div>
+        <div class="sl-badge">AUTH</div>
+      </div>
+      <div class="sl net">
+        <div class="sl-icon">🌐</div>
+        <div class="sl-body">
+          <strong>ネットワーク制御（Network Control）</strong>
+          <p>「どこからアクセスできるか」を制限する。プライベートエンドポイント、VNet統合、IPフィルタリングなど。</p>
+        </div>
+        <div class="sl-badge">NETWORK</div>
+      </div>
+      <div class="sl access">
+        <div class="sl-icon">🎫</div>
+        <div class="sl-body">
+          <strong>アクセス制御（Access Control）</strong>
+          <p>「どのAPIエンドポイントに・どれだけアクセスできるか」を管理する。サブスクリプションキー、ポリシー設定など。</p>
+        </div>
+        <div class="sl-badge">ACCESS</div>
+      </div>
+      <div class="sl bad">
+        <div class="sl-icon">🚫</div>
+        <div class="sl-body">
+          <strong>アンチパターン（やってはいけないこと）</strong>
+          <p>コードに認証情報をハードコード、平文保存、共有キーの使い回しなど。これらは根本的なセキュリティ崩壊につながる。</p>
+        </div>
+        <div class="sl-badge">BAD</div>
+      </div>
+    </div>
+  </div>
+
+</div></div>
+
+<!-- ═══ TAB 3: 各機能の詳細 ═══ -->
+<div class="pane" id="p-features"><div class="wrap">
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:#eff6ff">🔐</span>OAuth 2.0 とは</div>
+    <div class="card">
+      <div class="ct"><span class="tag tb">OAuth 2.0</span> 委任認可プロトコル</div>
+      <p>「ユーザーの代わりにアプリが別サービスのリソースにアクセスする」ための標準プロトコル。<br>
+      APIMでは Entra ID（旧Azure AD）などのIdPと連携し、クライアントが正規のトークンを持っているかを検証する。</p>
+      <div class="analogy">
+        <span class="al">🎟️ たとえ話</span>
+        映画館の入場。チケット（アクセストークン）を発行会社（Entra ID）から購入し、上映時間に提示すれば入場できる。<br>
+        チケットには「どの映画・どの日時・何席」という情報（スコープ）が書かれており、有効期限もある。<br>
+        映画館（API）はチケットを見るだけで本人確認が完了する。
+      </div>
+      <div class="fw" style="margin-top:14px">
+        <div class="flow">
+          <div class="fb bb"><span class="fl">クライアント</span>ログイン</div>
+          <div class="fa">→</div>
+          <div class="fb" style="border-color:var(--purple);background:var(--purple-xl)"><span class="fl">認証サーバー(IdP)</span>Entra ID</div>
+          <div class="fa">→<small>トークン発行</small></div>
+          <div class="fb bo"><span class="fl">APIM</span>トークン検証</div>
+          <div class="fa">→<small>OK</small></div>
+          <div class="fb bg"><span class="fl">バックエンド</span>データ返却</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:#f0fdf4">🌐</span>プライベートエンドポイントとは</div>
+    <div class="card">
+      <div class="ct"><span class="tag tg">Private Endpoint</span> ネットワーク隔離</div>
+      <p>APIMをインターネットから切り離し、Azure仮想ネットワーク（VNet）内のプライベートIPアドレスでのみアクセス可能にする機能。インターネットからは一切到達できなくなる。</p>
+      <div class="analogy">
+        <span class="al">🏢 たとえ話</span>
+        会社のシステムに「社内ネットワークからしかアクセスできない専用回線」を引く行為。<br>
+        公道（インターネット）からは来られず、社内の専用通路（プライベートエンドポイント）を通った人だけが入れる。<br>
+        外部の攻撃者はそもそも「入り口にたどり着けない」状態になる。
+      </div>
+      <div class="ib green" style="margin-top:12px">
+        <strong>✅ どんな場合に使うか</strong>
+        社内システム・パートナー企業など、特定のVNet内のクライアントのみがAPIを使う場合。
+        バックエンドへの接続にも使え、通信全体をインターネットに露出しない設計が可能。
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:#eef2ff">🎫</span>サブスクリプションキーとは</div>
+    <div class="card">
+      <div class="ct"><span class="tag ti">Subscription Key</span> APIM固有のアクセス制御</div>
+      <p>Azure API Management 固有のアクセスキー。APIを使いたいクライアントは事前にサブスクリプション登録を行い、発行されたキーをリクエストヘッダーに含める。</p>
+      <div class="analogy">
+        <span class="al">🗝️ たとえ話</span>
+        会員制サービスの会員証。事前に登録（サブスクリプション）して会員証（キー）を受け取り、入場時に提示する。<br>
+        「誰がどのAPIをどれだけ使ったか」をキー単位で把握でき、不正利用の場合はキーを即座に無効化できる。
+      </div>
+
+      <div class="tw" style="margin-top:14px">
+        <table>
+          <thead><tr><th>特徴</th><th>内容</th></tr></thead>
+          <tbody>
+            <tr><td>送信方法</td><td><code>Ocp-Apim-Subscription-Key</code> ヘッダーまたはクエリパラメータ</td></tr>
+            <tr><td>スコープ</td><td>製品単位・API単位・全API で発行可能</td></tr>
+            <tr><td>管理</td><td>Entra ポータルまたは開発者ポータルで発行・無効化</td></tr>
+            <tr><td>用途</td><td>外部開発者へのAPI提供、クォータ管理</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:#fef9c3">🚧</span>IPホワイトリストとは（補足）</div>
+    <div class="card">
+      <div class="ct"><span class="tag ta">IP Filtering</span> ネットワーク制御</div>
+      <p>APIMのポリシーで「特定のIPアドレスからのリクエストのみ許可」するフィルタリング機能。</p>
+      <div class="ib amber">
+        <strong>⚠️ 有効だが「クライアントアプリ向け」では限界がある</strong>
+        サーバー間通信・固定IPを持つシステムには有効。ただし、スマホ・PC・モバイルユーザーなど動的IPを持つ「クライアントアプリ」向けAPIには不向き。<br>
+        今回の問題は「クライアントアプリ向けのAPI」なので、他の3つが優先される。
+      </div>
+    </div>
+  </div>
+
+</div></div>
+
+<!-- ═══ TAB 4: やってはいけないこと ═══ -->
+<div class="pane" id="p-bad"><div class="wrap">
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:#fef2f2">🚫</span>アプリコードへの認証情報ハードコード — なぜ絶対NG か</div>
+
+    <div class="ib red">
+      <strong>🚨 選択肢②「アプリケーションコードに API 資格情報を保存する」は最悪のセキュリティ対策</strong>
+      これは「セキュリティ対策を実装する」どころか、セキュリティを破壊する行為。試験では必ず誤り選択肢として登場する。
+    </div>
+
+    <div class="card">
+      <div class="ct">なぜコードに認証情報を書いてはいけないか</div>
+      <div class="steps">
+        <div class="step">
+          <div class="sn" style="background:var(--red)">1</div>
+          <div class="sb">
+            <strong>Git リポジトリに漏れる</strong>
+            <p>ソースコードをGitHubにプッシュすると、コードに書かれたAPIキー・パスワードがそのまま全世界に公開される。実際に1分以内に自動スキャナーに発見される事例が多数報告されている。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sn" style="background:var(--red)">2</div>
+          <div class="sb">
+            <strong>ログ・エラーメッセージに混入する</strong>
+            <p>スタックトレースやデバッグログに認証情報が含まれて記録される可能性がある。ログ管理システムへのアクセス権があれば誰でも取得可能になる。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sn" style="background:var(--red)">3</div>
+          <div class="sb">
+            <strong>ローテーションが困難になる</strong>
+            <p>キーを変更するたびにコードを修正 → テスト → デプロイのサイクルが必要になる。インシデント発生時の即時対応ができなくなる。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sn" style="background:var(--red)">4</div>
+          <div class="sb">
+            <strong>逆コンパイルで抽出される</strong>
+            <p>コンパイル済みのアプリケーションでも、リバースエンジニアリングツールで文字列を抽出することが可能なケースがある。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ct"><span class="tag tg">正しい代替手段</span></div>
+      <div class="tw">
+        <table>
+          <thead><tr><th>方法</th><th>概要</th><th>Azure での実装</th></tr></thead>
+          <tbody>
+            <tr class="hl"><td>Key Vault</td><td>シークレットを安全に保存・参照</td><td>Azure Key Vault + Managed Identity</td></tr>
+            <tr><td>環境変数</td><td>実行環境から注入（コードに書かない）</td><td>App Service 環境変数・K8s Secrets</td></tr>
+            <tr><td>Managed Identity</td><td>コードに認証情報不要でAzureリソースにアクセス</td><td>Azure Managed Identity</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div></div>
+
+<!-- ═══ TAB 5: 問題解説 ═══ -->
+<div class="pane" id="p-exam"><div class="wrap">
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:#fef2f2">📝</span>問題シナリオの完全解析</div>
+
+    <div class="scen">
+      <h3>📋 シナリオ整理</h3>
+      <ul>
+        <li>クライアントアプリケーション向けのAPIを開発・提供している</li>
+        <li>Azure API Management（APIM）を導入してAPIを管理している</li>
+        <li>これらのAPIへの<strong>セキュアなアクセスを確保</strong>する必要がある</li>
+      </ul>
+      <div class="prob">
+        🎯 問題：どの3つのセキュリティ対策を実装すべきか？<br>
+        → 認証・ネットワーク・アクセス制御の組み合わせが正解のポイント
+      </div>
+    </div>
+
+    <div class="acc-list">
+
+      <div class="acc">
+        <div class="ah" onclick="ta(this)">
+          <span class="verd v-ok">✓ 正解</span>
+          <span class="aq">① OAuth 2.0 を実装する</span>
+          <span class="aa">▼</span>
+        </div>
+        <div class="ab">
+          <p style="margin-bottom:10px">APIへのアクセスに <strong>標準的な認証・認可プロトコル（OAuth 2.0）</strong> を使うことで、クライアントの身元確認と権限の範囲制御が可能になる。</p>
+          <div class="ib green">
+            <strong>✅ 正解な理由</strong>
+            APIMはEntra IDなどのOAuth 2.0対応IdPと連携し、JWTトークン検証ポリシーを設定できる。<br>
+            クライアントアプリ向けAPIのセキュリティには最も標準的かつ強固な認証手段。<br>
+            スコープによる細かい権限制御も可能で、セキュリティのベストプラクティスに合致する。
+          </div>
+        </div>
+      </div>
+
+      <div class="acc">
+        <div class="ah" onclick="ta(this)">
+          <span class="verd v-ng">✗ 不正解</span>
+          <span class="aq">② アプリケーションコードに API 資格情報を保存する</span>
+          <span class="aa">▼</span>
+        </div>
+        <div class="ab">
+          <p style="margin-bottom:10px">これは<strong>セキュリティ対策ではなくセキュリティ脅威</strong>。OWASP Top 10でも「機密情報の不適切な管理」として上位に挙げられるアンチパターン。</p>
+          <div class="ib red">
+            <strong>🚨 完全な誤り</strong>
+            コードへのハードコードはGit漏洩・ログ混入・逆コンパイルリスクを生む。<br>
+            正解：Azure Key VaultとManaged Identityを使い、コードに認証情報を持たせない設計にする。
+          </div>
+        </div>
+      </div>
+
+      <div class="acc">
+        <div class="ah" onclick="ta(this)">
+          <span class="verd v-ok">✓ 正解</span>
+          <span class="aq">③ プライベートエンドポイントを使用する</span>
+          <span class="aa">▼</span>
+        </div>
+        <div class="ab">
+          <p style="margin-bottom:10px">APIMをVNet内のプライベートIPのみでアクセス可能にし、<strong>インターネットからの直接アクセスを遮断</strong>するネットワークレベルの保護。</p>
+          <div class="ib green">
+            <strong>✅ 正解な理由</strong>
+            認証を突破される前にそもそも「入り口にたどり着けない」状態を作れる。<br>
+            認証レイヤー（OAuth/サブスクリプションキー）と組み合わせることで多層防御（Defense in Depth）が実現する。<br>
+            DDoS攻撃・スキャン攻撃のリスクも大幅に低減できる。
+          </div>
+        </div>
+      </div>
+
+      <div class="acc">
+        <div class="ah" onclick="ta(this)">
+          <span class="verd v-ng">✗ 不正解</span>
+          <span class="aq">④ IP ホワイトリストを定義する</span>
+          <span class="aa">▼</span>
+        </div>
+        <div class="ab">
+          <p style="margin-bottom:10px">IP フィルタリングはAPIMで設定可能な機能だが、<strong>「クライアントアプリ向け」APIには適さない</strong>。</p>
+          <div class="ib amber">
+            <strong>⚠️ なぜ不正解か</strong>
+            クライアントアプリのユーザーは動的IP（スマホのLTE・自宅Wi-Fiなど）を持つため、全員のIPを事前に登録することは不可能。<br>
+            IPホワイトリストが有効なのは、固定IPを持つサーバー間通信やB2B連携など。<br>
+            今回の問題文には「クライアントアプリケーション向け」と明記されているため不適切。
+          </div>
+        </div>
+      </div>
+
+      <div class="acc">
+        <div class="ah" onclick="ta(this)">
+          <span class="verd v-ok">✓ 正解</span>
+          <span class="aq">⑤ サブスクリプションキーを使用する</span>
+          <span class="aa">▼</span>
+        </div>
+        <div class="ab">
+          <p style="margin-bottom:10px">APIM固有のアクセス制御機能。クライアントは事前登録で発行されたキーをリクエストに含める。</p>
+          <div class="ib green">
+            <strong>✅ 正解な理由</strong>
+            APIMの基本的なアクセス制御メカニズム。クライアントごとにキーを発行してアクセスを管理し、<br>
+            不正利用時は即座に特定のキーだけ無効化できる。使用量・クォータ管理にも使える。<br>
+            OAuth 2.0と組み合わせることで多重のアクセス制御が可能。
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:#f0fdf4">💡</span>正解まとめ</div>
+    <div class="kb">
+      <h3>正解：① + ③ + ⑤</h3>
+      <ul>
+        <li>① OAuth 2.0 → 認証・認可（誰がアクセスするかを制御）</li>
+        <li>③ プライベートエンドポイント → ネットワーク保護（どこからアクセスできるかを制御）</li>
+        <li>⑤ サブスクリプションキー → アクセス制御（APIM固有のキー管理）</li>
+      </ul>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>選択肢</th><th>判定</th><th>セキュリティ層</th><th>理由</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td>① OAuth 2.0</td><td class="ok">✓ 正解</td><td>認証・認可</td><td>標準的・強固・スコープ制御可能</td></tr>
+          <tr style="background:var(--red-xl)"><td>② コードに保存</td><td class="ng">✗ 不正解</td><td>—</td><td>セキュリティの破壊。絶対NG</td></tr>
+          <tr class="hl"><td>③ プライベートエンドポイント</td><td class="ok">✓ 正解</td><td>ネットワーク</td><td>インターネット露出ゼロ・多層防御</td></tr>
+          <tr><td>④ IPホワイトリスト</td><td class="ng">✗ 不正解</td><td>ネットワーク</td><td>クライアントアプリの動的IPに不対応</td></tr>
+          <tr class="hl"><td>⑤ サブスクリプションキー</td><td class="ok">✓ 正解</td><td>アクセス制御</td><td>APIM固有・クライアント管理・即時無効化可能</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div></div>
+
+<!-- ═══ TAB 6: 試験対策 ═══ -->
+<div class="pane" id="p-tips"><div class="wrap">
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:#eff6ff">🎯</span>類似問題を解くためのパターン認識</div>
+
+    <div class="tgrid">
+      <div class="tip">
+        <h4>📌 パターン①：コード保存は常に誤り</h4>
+        <p>「アプリコードに認証情報を保存」「ハードコード」「設定ファイルに直書き」→ 常に誤り選択肢。APIキー・パスワード・証明書は全てKey Vaultへ。</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン②：対象に応じてネットワーク制御を選ぶ</h4>
+        <p>動的IP（クライアントアプリ・モバイル）→ IPホワイトリストは不適切<br>
+        固定IP（サーバー間通信・B2B）→ IPホワイトリストが有効<br>
+        VNet内のみ → プライベートエンドポイント</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン③：APIMの3大セキュリティ機能</h4>
+        <p>APIM試験では以下がセットで出る：<br>
+        ① OAuth 2.0（認証）<br>
+        ② プライベートエンドポイント（ネットワーク）<br>
+        ③ サブスクリプションキー（アクセス制御）</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン④：多層防御の考え方</h4>
+        <p>「一つのセキュリティ対策で全部守る」は正解にならない。認証+ネットワーク+アクセス制御の組み合わせ（Defense in Depth）が選択肢に並ぶ。</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン⑤：OAuth vs サブスクリプションキーの違い</h4>
+        <p>OAuth = ユーザー/アプリの身元確認（外部IdPと連携）<br>
+        サブスクリプションキー = APIMへのアクセス権（APIM内部の管理）<br>両方同時に設定することが多い。</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン⑥：Runbook との混同に注意</h4>
+        <p>APIMセキュリティの問題でRunbookが出てきたら誤り。RunbookはAzure Automationの機能でAPIセキュリティとは無関係。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:#f0fdf4">🧠</span>全体まとめ</div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>覚えること</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td>コードへの保存</td><td>絶対NG → Azure Key Vault + Managed Identity を使う</td></tr>
+          <tr><td>OAuth 2.0</td><td>誰がアクセスするかを標準プロトコルで検証。Entra IDと連携</td></tr>
+          <tr><td>プライベートエンドポイント</td><td>ネットワーク的にインターネットから遮断。VNet内のみアクセス可能</td></tr>
+          <tr><td>サブスクリプションキー</td><td>APIM固有のキー管理。クライアントごとに発行・即時無効化可能</td></tr>
+          <tr><td>IPホワイトリスト</td><td>クライアントアプリ（動的IP）には不適。固定IP環境向け</td></tr>
+          <tr><td>APIMのセキュリティ鉄則</td><td>認証 + ネットワーク + アクセス制御 の多層防御</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="ib blue">
+      <strong>🔑 この問題の一言要約</strong>
+      クライアントアプリ向けAPIに必要なのは「誰か確認（OAuth）」「ネットワーク保護（Private Endpoint）」「鍵管理（Subscription Key）」の3点セット。<br>
+      コードへの認証情報保存は論外のNG。IPホワイトリストはクライアントアプリの動的IPに対応できないため不適切。
+    </div>
+  </div>
+
+</div></div>
+
+<footer>Azure API Management セキュリティ完全攻略ガイド — AZ-204 / AZ-305 / AZ-500 対応</footer>
+
+<script>
+function sw(id) {
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('act'));
+  document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('act'));
+  document.getElementById('p-' + id).classList.add('act');
+  event.currentTarget.classList.add('act');
+  document.getElementById('tnav').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function ta(h) {
+  h.classList.toggle('op');
+  h.nextElementSibling.classList.toggle('op');
+}
+</script>
+</body>
+</html>
