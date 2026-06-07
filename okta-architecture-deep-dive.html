@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Okta Deep Dive — IdP・構成・周辺知識</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans+JP:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --bg2: #0f1318;
+    --bg3: #161b22;
+    --bg4: #1e2530;
+    --border: #2a3340;
+    --border2: #3a4555;
+    --text: #c9d4e0;
+    --text-dim: #6b7d8f;
+    --text-bright: #e8f0f8;
+    --accent: #00d4ff;
+    --accent2: #0096b8;
+    --accent-dim: #003a4d;
+    --green: #3dd68c;
+    --green-dim: #0d3322;
+    --amber: #f5a623;
+    --amber-dim: #3d2900;
+    --red: #ff6b6b;
+    --red-dim: #3d0f0f;
+    --purple: #a78bfa;
+    --purple-dim: #2d1f5e;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans JP', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 32px 48px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .logo-badge {
+    background: var(--accent);
+    color: var(--bg);
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 2px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  header h1 {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-bright);
+    letter-spacing: 0.02em;
+  }
+
+  header span {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-left: auto;
+  }
+
+  /* ── LAYOUT ── */
+  .wrapper {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 32px 80px;
+  }
+
+  /* ── NAV ── */
+  nav {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+    overflow-x: auto;
+    padding-top: 8px;
+  }
+
+  nav a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    padding: 12px 20px;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  nav a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ── SECTION ── */
+  section {
+    margin-bottom: 72px;
+    scroll-margin-top: 80px;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin: 28px 0 12px;
+  }
+
+  p { margin-bottom: 12px; color: var(--text); }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 2px;
+  }
+  .tag-blue { background: var(--accent-dim); color: var(--accent); }
+  .tag-green { background: var(--green-dim); color: var(--green); }
+  .tag-amber { background: var(--amber-dim); color: var(--amber); }
+  .tag-red { background: var(--red-dim); color: var(--red); }
+  .tag-purple { background: var(--purple-dim); color: var(--purple); }
+
+  /* ── GRID ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ── MOBILE ── */
+  @media (max-width: 768px) {
+
+    /* Header */
+    header {
+      padding: 12px 16px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 13px; }
+    header > span { display: none; }
+
+    /* Wrapper */
+    .wrapper { padding: 0 14px 60px; }
+
+    /* Nav */
+    nav {
+      margin-bottom: 28px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    nav::-webkit-scrollbar { display: none; }
+    nav a {
+      padding: 14px 14px;
+      font-size: 10px;
+      letter-spacing: 0.03em;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Section */
+    section { margin-bottom: 48px; }
+    h2 { font-size: 18px; margin-bottom: 18px; }
+    h3 { font-size: 14px; margin: 22px 0 10px; }
+
+    /* Grid */
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+
+    /* Card */
+    .card { padding: 16px; }
+    .card-title { font-size: 12px; flex-wrap: wrap; gap: 6px; }
+
+    /* Diagram */
+    .diagram {
+      padding: 16px 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Arch diagram / code */
+    .arch-diagram {
+      font-size: 11px;
+      padding: 14px 12px;
+      line-height: 1.9;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Proto grid */
+    .proto-grid { grid-template-columns: 1fr; }
+
+    /* Product map */
+    .product-map { grid-template-columns: 1fr; }
+
+    /* Pattern block */
+    .pattern-header {
+      padding: 12px 14px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pattern-title { font-size: 13px; }
+    .pattern-body { padding: 14px; }
+
+    /* Compare: stack vertically as cards */
+    .compare-wrap { border: none; border-radius: 0; background: transparent; }
+    .compare-header { display: none; }
+    .compare-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      background: transparent;
+      margin-bottom: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .compare-cell {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-cell:last-child { border-bottom: none; }
+    .compare-cell.label-cell {
+      background: var(--bg4);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+    }
+
+    /* Table */
+    .tbl-wrap {
+      -webkit-overflow-scrolling: touch;
+    }
+    table { font-size: 12px; min-width: 480px; }
+    thead th { padding: 8px 12px; font-size: 9px; }
+    tbody td { padding: 9px 12px; }
+
+    /* Steps */
+    .step-item { gap: 12px; }
+    .step-body strong { font-size: 13px; }
+    .step-body p { font-size: 12px; }
+
+    /* Callout */
+    .callout { font-size: 12px; padding: 12px 14px; }
+
+    /* Section label */
+    .section-label { font-size: 9px; }
+
+    /* Tags */
+    .tag { font-size: 8px; }
+
+    /* Pattern header tag push */
+    .pattern-header .tag { margin-left: 0 !important; }
+
+    /* Compare cell data-label */
+    .compare-cell[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+
+    /* Body font for readability */
+    body { font-size: 13px; }
+    p { font-size: 13px; }
+
+    /* ul list */
+    ul.list li { font-size: 12px; }
+  }
+
+  /* ── DIAGRAM ── */
+  .diagram {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 28px;
+    font-family: var(--mono);
+    font-size: 12px;
+    overflow-x: auto;
+    margin: 20px 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .diag-flow {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .diag-node {
+    background: var(--bg4);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 12px 16px;
+    text-align: center;
+    min-width: 100px;
+    font-size: 11px;
+  }
+
+  .diag-node.primary {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .diag-node.secondary {
+    border-color: var(--border2);
+    color: var(--text);
+  }
+
+  .diag-node .node-title {
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+  }
+
+  .diag-node.primary .node-title {
+    color: var(--accent);
+  }
+
+  .diag-node .node-sub {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .diag-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    color: var(--text-dim);
+    font-size: 10px;
+    min-width: 60px;
+  }
+
+  .diag-arrow .arrow-line {
+    width: 100%;
+    height: 1px;
+    background: var(--border2);
+    position: relative;
+    margin-bottom: 4px;
+  }
+
+  .diag-arrow .arrow-label {
+    font-size: 8px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  /* ── TABLE ── */
+  .tbl-wrap {
+    overflow-x: auto;
+    margin: 20px 0;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border2);
+    background: var(--bg3);
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr:hover { background: var(--bg3); }
+
+  tbody td {
+    padding: 11px 16px;
+    vertical-align: top;
+    color: var(--text);
+  }
+
+  tbody td:first-child {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-bright);
+  }
+
+  .check { color: var(--green); }
+  .cross { color: var(--red-dim); opacity: 0.6; }
+  .partial { color: var(--amber); }
+
+  /* ── CODE ── */
+  .code-block {
+    background: #060809;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 16px 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.8;
+    color: #8ab4c8;
+    overflow-x: auto;
+    margin: 16px 0;
+  }
+
+  .code-block .kw { color: var(--accent); }
+  .code-block .str { color: var(--green); }
+  .code-block .comment { color: var(--text-dim); }
+
+  /* ── CALLOUT ── */
+  .callout {
+    border-left: 3px solid;
+    padding: 14px 18px;
+    border-radius: 0 4px 4px 0;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+
+  .callout-blue {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    color: var(--text);
+  }
+
+  .callout-green {
+    border-color: var(--green);
+    background: var(--green-dim);
+    color: var(--text);
+  }
+
+  .callout-amber {
+    border-color: var(--amber);
+    background: var(--amber-dim);
+    color: var(--text);
+  }
+
+  /* ── STEP ── */
+  .steps { counter-reset: step; }
+
+  .step-item {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-top: 2px;
+  }
+
+  .step-body { flex: 1; }
+  .step-body strong { color: var(--text-bright); font-size: 13px; }
+  .step-body p { font-size: 13px; margin-top: 4px; margin-bottom: 0; }
+
+  /* ── COMPARE ── */
+  .compare-header {
+    display: grid;
+    grid-template-columns: 200px 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .compare-row {
+    display: grid;
+    grid-template-columns: 200px 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 0;
+  }
+
+  .compare-cell {
+    background: var(--bg3);
+    padding: 12px 16px;
+    font-size: 13px;
+  }
+
+  .compare-cell.header-cell {
+    background: var(--bg4);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--text-bright);
+    text-align: center;
+  }
+
+  .compare-cell.label-cell {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .compare-wrap {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 20px 0;
+  }
+
+  .compare-row:last-child .compare-cell { border-bottom: 0; }
+
+  /* ── PRODUCT MAP ── */
+  .product-map {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 20px 0;
+  }
+
+  .product-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .product-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+  }
+
+  .product-card.blue::before { background: var(--accent); }
+  .product-card.green::before { background: var(--green); }
+  .product-card.amber::before { background: var(--amber); }
+  .product-card.purple::before { background: var(--purple); }
+
+  .product-card:hover { border-color: var(--border2); }
+
+  .product-card h4 {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 6px;
+  }
+
+  .product-card p {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* ── PATTERN BLOCK ── */
+  .pattern-block {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+
+  .pattern-header {
+    background: var(--bg4);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pattern-num {
+    width: 24px;
+    height: 24px;
+    background: var(--accent-dim);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .pattern-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-bright);
+  }
+
+  .pattern-body { padding: 20px; }
+
+  .arch-diagram {
+    background: #060809;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #7a9db8;
+    line-height: 2;
+    margin: 12px 0;
+    overflow-x: auto;
+  }
+
+  .arch-diagram .hl { color: var(--accent); }
+  .arch-diagram .hl2 { color: var(--green); }
+  .arch-diagram .hl3 { color: var(--amber); }
+
+  /* ── PROTOCOL CARD ── */
+  .proto-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 20px 0;
+  }
+
+  .proto-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 18px;
+  }
+
+  .proto-name {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .proto-full {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+
+  .proto-desc { font-size: 12px; color: var(--text); }
+
+  ul.list {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0;
+  }
+
+  ul.list li {
+    padding: 5px 0;
+    padding-left: 16px;
+    position: relative;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  ul.list li::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--text-dim);
+  }
+
+  .highlight-row {
+    background: var(--accent-dim) !important;
+  }
+
+  .highlight-row td { color: var(--accent) !important; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  section {
+    animation: fadeIn 0.4s ease both;
+  }
+
+  section:nth-child(2) { animation-delay: 0.05s; }
+  section:nth-child(3) { animation-delay: 0.1s; }
+  section:nth-child(4) { animation-delay: 0.15s; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-badge">Okta</div>
+  <h1>Identity Architecture — Deep Dive</h1>
+  <span>IdP / フェデレーション / 構成パターン / 製品マップ</span>
+</header>
+
+<div class="wrapper">
+  <nav>
+    <a href="#fundamentals">IdP基礎</a>
+    <a href="#protocols">プロトコル</a>
+    <a href="#products">製品マップ</a>
+    <a href="#patterns">構成パターン</a>
+    <a href="#components">主要機能</a>
+    <a href="#vs-entra">vs Entra ID</a>
+    <a href="#usecases">選定基準</a>
+  </nav>
+
+  <!-- ── SECTION 1: IdP基礎 ── -->
+  <section id="fundamentals">
+    <div class="section-label">Section 01</div>
+    <h2>IdP（Identity Provider）の基礎</h2>
+
+    <p>IdPとは「誰であるか」を証明するサービス。ユーザーが何かにアクセスしようとしたとき、IdPが認証を担い、結果を信頼するSP（Service Provider）にアサーションを渡す。</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">IdP（Identity Provider）<span class="tag tag-blue">認証側</span></div>
+        <p style="font-size:13px;">ユーザーのクレデンシャルを管理・検証し、認証トークン/アサーションを発行する。例：Okta、Entra ID、Google Workspace</p>
+      </div>
+      <div class="card">
+        <div class="card-title">SP（Service Provider）<span class="tag tag-green">リソース側</span></div>
+        <p style="font-size:13px;">IdPを信頼してアクセスを許可するサービス。例：Salesforce、M365、社内アプリ。認証ロジックを持たず、IdPのアサーションを検証するだけ。</p>
+      </div>
+    </div>
+
+    <h3>認証フローの基本</h3>
+    <div class="diagram">
+      <div class="diag-flow">
+        <div class="diag-node secondary">
+          <div class="node-title">ユーザー</div>
+          <div class="node-sub">ブラウザ</div>
+        </div>
+        <div class="diag-arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-label">① アクセス要求</div>
+        </div>
+        <div class="diag-node secondary">
+          <div class="node-title">SP</div>
+          <div class="node-sub">Salesforce等</div>
+        </div>
+        <div class="diag-arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-label">② IdPへリダイレクト</div>
+        </div>
+        <div class="diag-node primary">
+          <div class="node-title">IdP（Okta）</div>
+          <div class="node-sub">認証・MFA</div>
+        </div>
+        <div class="diag-arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-label">③ アサーション発行</div>
+        </div>
+        <div class="diag-node secondary">
+          <div class="node-title">SP</div>
+          <div class="node-sub">アクセス許可</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-blue">
+      SPは「Oktaが認証した」という事実だけを信頼する。パスワードはSPに届かない。これがSSOの本質。
+    </div>
+
+    <h3>フェデレーション（Identity Federation）とは</h3>
+    <p>異なる組織・ドメイン・システム間でIdPの信頼を連携させる仕組み。「AのIdPを信頼する」という設定をBのSPが持つことで、Aで認証したユーザーがBのサービスをシームレスに使える。</p>
+
+    <div class="card">
+      <div class="card-title">フェデレーション設定例：Entra ID ⇄ Okta</div>
+      <div class="arch-diagram">
+<span class="hl"># Entra ID側でのフェデレーション設定概念</span>
+Entra ID > External Identities > External IdP登録
+  → Type: SAML/WS-Fed
+  → Metadata URL: https://&lt;oktadomain&gt;/app/&lt;appid&gt;/sso/saml/metadata
+  → Federated Domain: contoso.com を Okta に委譲
+
+<span class="hl2"># 結果</span>
+user@contoso.com でM365ログイン
+  → Entra IDが「このドメインはOktaで認証」と判断
+  → Oktaにリダイレクト → Okta MFA通過
+  → SAMLアサーションをEntra IDに返却
+  → M365アクセス許可
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION 2: プロトコル ── -->
+  <section id="protocols">
+    <div class="section-label">Section 02</div>
+    <h2>認証・認可プロトコル</h2>
+
+    <div class="proto-grid">
+      <div class="proto-card">
+        <div class="proto-name">SAML 2.0</div>
+        <div class="proto-full">Security Assertion Markup Language</div>
+        <div class="proto-desc">XMLベースのフェデレーションプロトコル。エンタープライズSSOの主流。IdPとSPがXMLアサーションを交換する。2005年策定で古いが普及率が高い。</div>
+        <div style="margin-top:10px;">
+          <span class="tag tag-blue">IdP-Initiated SSO</span>
+          <span class="tag tag-green">SP-Initiated SSO</span>
+        </div>
+      </div>
+      <div class="proto-card">
+        <div class="proto-name">OIDC</div>
+        <div class="proto-full">OpenID Connect</div>
+        <div class="proto-desc">OAuth 2.0の上に認証レイヤーを追加したプロトコル。JSONベース。モダンアプリ・SPAに適する。IDトークン（JWT）を発行。Oktaが特に推進。</div>
+        <div style="margin-top:10px;">
+          <span class="tag tag-blue">JWT</span>
+          <span class="tag tag-amber">モダンアプリ向け</span>
+        </div>
+      </div>
+      <div class="proto-card">
+        <div class="proto-name">OAuth 2.0</div>
+        <div class="proto-full">Open Authorization</div>
+        <div class="proto-desc">認可のフレームワーク。「誰か」を証明するのではなく「何にアクセスできるか」を委譲する。アクセストークンを発行。OIDCと組み合わせて使うことが多い。</div>
+        <div style="margin-top:10px;">
+          <span class="tag tag-green">アクセス委譲</span>
+          <span class="tag tag-purple">APIアクセス制御</span>
+        </div>
+      </div>
+      <div class="proto-card">
+        <div class="proto-name">SCIM 2.0</div>
+        <div class="proto-full">System for Cross-domain Identity Management</div>
+        <div class="proto-desc">ユーザープロビジョニング自動化の標準プロトコル。IdPからSPへのアカウント作成/更新/削除をAPI経由で自動化。Okta Lifecycle Managementの根幹。</div>
+        <div style="margin-top:10px;">
+          <span class="tag tag-amber">プロビジョニング</span>
+        </div>
+      </div>
+      <div class="proto-card">
+        <div class="proto-name">LDAP</div>
+        <div class="proto-full">Lightweight Directory Access Protocol</div>
+        <div class="proto-desc">Active DirectoryやOpenLDAPとの連携に使用。Okta AD Agent/LDAP Interfaceを介してオンプレADとの同期・認証を実現する。</div>
+        <div style="margin-top:10px;">
+          <span class="tag tag-red">レガシー連携</span>
+        </div>
+      </div>
+      <div class="proto-card">
+        <div class="proto-name">RADIUS</div>
+        <div class="proto-full">Remote Authentication Dial-In User Service</div>
+        <div class="proto-desc">ネットワーク機器（VPN/Wi-Fi/スイッチ）の認証に使用。Okta RADIUS Agentを挟むことでOktaのMFAをネットワーク機器認証に適用できる。</div>
+        <div style="margin-top:10px;">
+          <span class="tag tag-red">NW機器認証</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>SAMLとOIDCの使い分け</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>観点</th>
+            <th>SAML 2.0</th>
+            <th>OIDC / OAuth 2.0</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>フォーマット</td>
+            <td>XML（重い）</td>
+            <td>JSON / JWT（軽い）</td>
+          </tr>
+          <tr>
+            <td>向いてる用途</td>
+            <td>エンタープライズSaaS、レガシー統合</td>
+            <td>モダンアプリ、SPA、モバイル、API</td>
+          </tr>
+          <tr>
+            <td>主なSP例</td>
+            <td>Salesforce、ServiceNow、旧来SaaS</td>
+            <td>社内アプリ、Slack、GitHub、Google</td>
+          </tr>
+          <tr>
+            <td>設定複雑度</td>
+            <td>中〜高（メタデータ交換）</td>
+            <td>低（client_id / secret）</td>
+          </tr>
+          <tr>
+            <td>トークン</td>
+            <td>SAMLアサーション（XML署名）</td>
+            <td>ID Token + Access Token（JWT）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── SECTION 3: 製品マップ ── -->
+  <section id="products">
+    <div class="section-label">Section 03</div>
+    <h2>Okta 製品ポートフォリオ</h2>
+
+    <p>Oktaは大きく「Workforce Identity Cloud」と「Customer Identity Cloud（旧Auth0）」の2系統で構成される。</p>
+
+    <h3>Workforce Identity Cloud（WIC）— 社員向け</h3>
+    <div class="product-map">
+      <div class="product-card blue">
+        <h4>SSO / Universal Directory</h4>
+        <p>全アプリへの統一ログイン。7,000+のOINアプリ統合。ユーザーディレクトリの一元管理（AD/HR/LDAP同期）</p>
+      </div>
+      <div class="product-card blue">
+        <h4>Adaptive MFA</h4>
+        <p>リスクベースの多要素認証。ロケーション/デバイス/行動分析でステップアップ認証を動的に制御</p>
+      </div>
+      <div class="product-card blue">
+        <h4>Lifecycle Management</h4>
+        <p>SCIM + Workflowsによるプロビジョニング自動化。入社/異動/退社トリガーでSaaS全体のアカウントを自動制御</p>
+      </div>
+      <div class="product-card green">
+        <h4>Identity Governance（OIG）</h4>
+        <p>アクセスレビュー、権限認定、SOD（職務分離）。Saviyntほど重厚ではないが軽量IGAとして機能</p>
+      </div>
+      <div class="product-card green">
+        <h4>Privileged Access（OPA）</h4>
+        <p>サーバー/インフラへのJIT（Just-in-Time）アクセス。SSH/RDPセッション制御。CyberArkの軽量代替</p>
+      </div>
+      <div class="product-card green">
+        <h4>Device Access</h4>
+        <p>デバイス証明書によるパスワードレス認証。macOS/Windows対応。Entra IDのHybrid Joinに相当する機能</p>
+      </div>
+      <div class="product-card amber">
+        <h4>Okta Workflows</h4>
+        <p>ノーコードの自動化エンジン。HR連携、Slack通知、チケット起票、承認フローなどをコードなしで構築</p>
+      </div>
+      <div class="product-card amber">
+        <h4>Advanced Server Access（ASA）</h4>
+        <p>クラウドサーバーへのゼロトラストアクセス。SSH証明書の短命化、セッション録画、アクセスログ</p>
+      </div>
+      <div class="product-card amber">
+        <h4>Okta Verify / FastPass</h4>
+        <p>デバイスバインドのパスワードレス認証。生体認証連携。フィッシング耐性のある認証（FIDO2相当）</p>
+      </div>
+    </div>
+
+    <h3>Customer Identity Cloud（CIC）— 顧客向け＝旧Auth0</h3>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">B2C（消費者向けサービス）<span class="tag tag-purple">Auth0</span></div>
+        <ul class="list">
+          <li>ソーシャルログイン（Google/LINE/Facebook）</li>
+          <li>カスタマイズ可能なログインUI</li>
+          <li>パスワードレス（magic link/OTP）</li>
+          <li>MFAとリスクベース認証</li>
+          <li>月間アクティブユーザー数ベース課金</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">B2B（企業顧客へのサービス提供）<span class="tag tag-purple">Auth0</span></div>
+        <ul class="list">
+          <li>マルチテナントSaaS向けのIdP</li>
+          <li>顧客企業ごとのEntra ID/Okta連携</li>
+          <li>Organizations機能でテナント分離</li>
+          <li>顧客がSSO設定を自己管理できるAdmin Portal</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout callout-amber">
+      WIC（Workforce）とCIC（Customer）は同じOktaブランドだが、アーキテクチャもコードベースも異なる別製品。混同注意。
+    </div>
+  </section>
+
+  <!-- ── SECTION 4: 構成パターン ── -->
+  <section id="patterns">
+    <div class="section-label">Section 04</div>
+    <h2>実際の構成パターン</h2>
+
+    <!-- Pattern 1 -->
+    <div class="pattern-block">
+      <div class="pattern-header">
+        <div class="pattern-num">1</div>
+        <div class="pattern-title">Okta = Primary IdP、Entra IDをフェデレーション配下に置く</div>
+        <span class="tag tag-blue" style="margin-left:auto;">最頻出</span>
+      </div>
+      <div class="pattern-body">
+        <p style="font-size:13px; margin-bottom:12px;">エンタープライズで最も多いパターン。M365も含む全SaaSをOktaで統一管理し、Entra IDはOktaからSAMLを受け取るだけのSPに降格させる。</p>
+        <div class="arch-diagram">
+社員 → <span class="hl">Okta（Primary IdP）</span>
+           │
+           ├── SAML/OIDC → <span class="hl2">Entra ID（M365）</span>  ← フェデレーション
+           ├── SAML      → Salesforce
+           ├── SCIM      → Workday
+           ├── SAML      → ServiceNow
+           ├── OIDC      → 社内カスタムアプリ
+           └── RADIUS    → VPN / Wi-Fi
+        </div>
+        <div class="callout callout-green">
+          <strong>Entra ID側での設定：</strong>ドメインをFederated Domainとしてマーク → パスワードハッシュはAzure ADに同期しない（認証をOktaに完全委譲）→ Conditional Accessは引き続きEntra ID側で動く
+        </div>
+        <div class="grid-2">
+          <div>
+            <div style="color: var(--green); font-family: var(--mono); font-size:11px; margin-bottom:8px;">メリット</div>
+            <ul class="list">
+              <li>ユーザーがOktaだけ覚えればよい</li>
+              <li>全SaaSの認証ポリシーを一元管理</li>
+              <li>非Microsoft SaaSの統合品質が高い</li>
+              <li>Lifecycle Managementで全アプリ自動プロビジョニング</li>
+            </ul>
+          </div>
+          <div>
+            <div style="color: var(--red); font-family: var(--mono); font-size:11px; margin-bottom:8px;">制約・注意点</div>
+            <ul class="list">
+              <li>Entra ID Conditional Accessは残る（二重管理）</li>
+              <li>Windows Hello / Autopilotはまだ深くEntra依存</li>
+              <li>Okta障害時はM365も含めて全サービスが影響を受ける</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pattern 2 -->
+    <div class="pattern-block">
+      <div class="pattern-header">
+        <div class="pattern-num">2</div>
+        <div class="pattern-title">Entra ID = Primary IdP（MicrosoftスタックのみでOktaなし）</div>
+        <span class="tag tag-green" style="margin-left:auto;">Microsoft中心組織</span>
+      </div>
+      <div class="pattern-body">
+        <p style="font-size:13px; margin-bottom:12px;">M365 E5 + Entra P2を持ち、SaaSがほぼMicrosoft系の場合。コストとシンプルさが最大のメリット。</p>
+        <div class="arch-diagram">
+社員 → <span class="hl">Entra ID（Primary IdP）</span>
+           │
+           ├── Native → M365 / Azure
+           ├── SAML   → Salesforce（サポートあるが設定はOktaより手動）
+           ├── SCIM   → 一部SaaS（サポート範囲は限定的）
+           └── AD Connect → オンプレAD同期
+        </div>
+        <div class="callout callout-amber">
+          <strong>注意：</strong>Entra IDのSCIMプロビジョニングは非Microsoft SaaSへの対応が薄い。Workday連携もOktaより設定が複雑。SaaS増加フェーズで管理コスト急増のリスクあり。
+        </div>
+      </div>
+    </div>
+
+    <!-- Pattern 3 -->
+    <div class="pattern-block">
+      <div class="pattern-header">
+        <div class="pattern-num">3</div>
+        <div class="pattern-title">Okta WIC（従業員）+ Auth0 CIC（顧客）の二層構成</div>
+        <span class="tag tag-purple" style="margin-left:auto;">B2C SaaS企業</span>
+      </div>
+      <div class="pattern-body">
+        <p style="font-size:13px; margin-bottom:12px;">自社サービスを外部顧客に提供しながら、社内の従業員もOktaで管理。Okta製品で全IDを完結させる戦略。</p>
+        <div class="arch-diagram">
+<span class="hl">[従業員]</span>
+社員 → Okta WIC → 社内SaaS全般
+
+<span class="hl2">[外部顧客]</span>
+顧客 → Auth0（CIC）
+          ├── ソーシャルログイン（Google/LINE）
+          ├── パスワードレス（Magic Link）
+          └── エンタープライズ顧客 → 顧客のEntra IDやOktaにフェデレーション
+        </div>
+      </div>
+    </div>
+
+    <!-- Pattern 4 -->
+    <div class="pattern-block">
+      <div class="pattern-header">
+        <div class="pattern-num">4</div>
+        <div class="pattern-title">AD → Okta → 全SaaS（AD移行期の典型）</div>
+        <span class="tag tag-amber" style="margin-left:auto;">AD現役組織のモダナイゼーション</span>
+      </div>
+      <div class="pattern-body">
+        <p style="font-size:13px; margin-bottom:12px;">オンプレADが残っており、Entra IDへの完全移行が難しい状況。Okta AD AgentでADとOktaを同期させ、クラウドSaaSはOktaで管理。</p>
+        <div class="arch-diagram">
+オンプレAD ←→ <span class="hl3">Okta AD Agent</span>（双方向同期）
+                    ↓
+             <span class="hl">Okta（IdP）</span>
+                    │
+                    ├── SAML/OIDC → 全クラウドSaaS
+                    ├── フェデレーション → Entra ID（M365）
+                    └── RADIUS → VPN
+
+<span class="comment"># AD Agentは軽量なサービスとしてADドメインコントローラー近くに配置
+# Oktaのパスワード変更をADに書き戻すことも可能</span>
+        </div>
+        <div class="callout callout-blue">
+          AD移行の中間ステップとして非常に有効。ADを捨てずにクラウドSaaSを統合できる。最終的にはEntra ID Hybrid Joinと並行運用するケースが多い。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION 5: 主要機能詳細 ── -->
+  <section id="components">
+    <div class="section-label">Section 05</div>
+    <h2>Okta 主要コンポーネント詳細</h2>
+
+    <h3>Universal Directory（UD）— マスターIDストア</h3>
+    <div class="card">
+      <p style="font-size:13px;">Oktaのユーザーディレクトリ。AD・HR・LDAP・SaaSからユーザー情報を集約し、単一の「信頼できるプロファイル」を維持する。</p>
+      <div class="arch-diagram">
+AD（オンプレ）  ──→
+Workday（HR）  ──→  <span class="hl">Universal Directory</span>  ──→  全SaaSへSCIM配信
+Google Workspace ──→       （マスター）
+カスタムアプリ  ──→
+      </div>
+      <ul class="list">
+        <li>カスタム属性の追加が自由（部署コード、コスト番号、etc）</li>
+        <li>属性マッピングルールで各SaaSに適切な値を送信</li>
+        <li>プロファイル変更の優先ソース設定（どのシステムが正）</li>
+      </ul>
+    </div>
+
+    <h3>Adaptive MFA — リスクベース認証</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>認証要素</th>
+            <th>種類</th>
+            <th>フィッシング耐性</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Okta Verify (Push)</td>
+            <td>プッシュ通知承認</td>
+            <td class="partial">△（MFA疲労攻撃に弱い）</td>
+          </tr>
+          <tr class="highlight-row">
+            <td>Okta FastPass</td>
+            <td>デバイスバインド生体認証</td>
+            <td class="check">◎（フィッシング耐性）</td>
+          </tr>
+          <tr>
+            <td>FIDO2 / WebAuthn</td>
+            <td>ハードウェアキー</td>
+            <td class="check">◎（最強）</td>
+          </tr>
+          <tr>
+            <td>TOTP（Google Authenticator等）</td>
+            <td>時刻ベースOTP</td>
+            <td class="cross">✕（AiTMに脆弱）</td>
+          </tr>
+          <tr>
+            <td>SMS OTP</td>
+            <td>テキストメッセージ</td>
+            <td class="cross">✕（SIMスワップ）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:12px; color: var(--text-dim);">Adaptive = ユーザーのリスクスコアに応じてMFAのステップを動的に変える。通常の場所・デバイスからは要求しない、未知の環境からはFastPass必須、など。</p>
+
+    <h3>Lifecycle Management — 自動プロビジョニング</h3>
+    <div class="steps">
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Joiner（入社）</strong>
+          <p>WorkdayにHRレコードが作成 → OktaがSCIM/Webhookで受信 → 全SaaS（M365/Salesforce/Slack等）のアカウントを自動作成、グループ付与</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Mover（異動）</strong>
+          <p>部署変更 → Okta Workflowsが既存グループから外し新グループに追加 → SaaS権限が自動更新（例：営業ツールのアクセス削除、新部門ツール付与）</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Leaver（退社）</strong>
+          <p>HRで退社ステータス変更 → Okta全アカウント即時無効化 → 設定日数後に全SaaSアカウント削除 → M365ライセンス回収</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-green">
+      Entra IDのプロビジョニングと比較して、非Microsoft SaaSへのSCIM対応数（Okta OIN: 7,000+）が圧倒的に多い。Workday→Salesforce等の組み合わせでEntra IDより設定が楽。
+    </div>
+
+    <h3>Okta Workflows（ノーコード自動化）</h3>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">できること</div>
+        <ul class="list">
+          <li>HR連携トリガーでSlackチャンネル自動作成</li>
+          <li>特権グループ参加時にServiceNowチケット起票</li>
+          <li>退社時にGoogleドライブデータをオーナー移転</li>
+          <li>アクセスレビュー未回答者への自動リマインダー</li>
+          <li>外部API呼び出し（REST/GraphQL）</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">競合との位置づけ</div>
+        <p style="font-size:13px;">Power Automate（Microsoft）に近い概念だが、Identityイベント（ユーザー作成/グループ変更/認証失敗）をネイティブトリガーにできる点が差別化。Saviyntのライフサイクルエンジンより軽量。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION 6: vs Entra ID ── -->
+  <section id="vs-entra">
+    <div class="section-label">Section 06</div>
+    <h2>Okta vs Microsoft Entra ID — 機能比較</h2>
+
+    <div class="compare-wrap">
+      <div class="compare-header">
+        <div class="compare-cell header-cell"></div>
+        <div class="compare-cell header-cell">Okta</div>
+        <div class="compare-cell header-cell">Microsoft Entra ID（P2）</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell label-cell">SSOアプリ数</div>
+        <div class="compare-cell" data-label="Okta"><span class="check">◎</span> OIN 7,000+ (SAML/OIDC)</div>
+        <div class="compare-cell" data-label="Entra ID（P2）"><span class="partial">△</span> Microsoft Gallery 約3,000（非Microsoftは設定負荷高）</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell label-cell">SCIMプロビジョニング</div>
+        <div class="compare-cell" data-label="Okta"><span class="check">◎</span> 非Microsoftに強い（Workday/Salesforce標準対応）</div>
+        <div class="compare-cell" data-label="Entra ID（P2）"><span class="partial">△</span> Microsoft系は最強、非Microsoftは設定複雑</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell label-cell">Conditional Access</div>
+        <div class="compare-cell" data-label="Okta"><span class="partial">△</span> Adaptive MFAポリシーで代替（細かさは劣る）</div>
+        <div class="compare-cell" data-label="Entra ID（P2）"><span class="check">◎</span> Microsoft系との統合深さは最高</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell label-cell">M365統合</div>
+        <div class="compare-cell" data-label="Okta"><span class="partial">△</span> フェデレーション経由（一部機能制限）</div>
+        <div class="compare-cell" data-label="Entra ID（P2）"><span class="check">◎</span> ネイティブ統合</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell label-cell">Windows統合</div>
+        <div class="compare-cell" data-label="Okta"><span class="partial">△</span> Device Access（macOS強め）</div>
+        <div class="compare-cell" data-label="Entra ID（P2）"><span class="check">◎</span> Hybrid Join / Autopilot / Hello</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell label-cell">ノーコード自動化</div>
+        <div class="compare-cell" data-label="Okta"><span class="check">◎</span> Okta Workflows（Identity特化）</div>
+        <div class="compare-cell" data-label="Entra ID（P2）"><span class="partial">△</span> Power Automate（別製品・別コスト）</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell label-cell">CIAM（外部顧客）</div>
+        <div class="compare-cell" data-label="Okta"><span class="check">◎</span> Auth0（業界標準）</div>
+        <div class="compare-cell" data-label="Entra ID（P2）"><span class="partial">△</span> External Identities（後発、機能差あり）</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell label-cell">IGA（ガバナンス）</div>
+        <div class="compare-cell" data-label="Okta"><span class="partial">△</span> OIG（軽量、Saviyntより機能少）</div>
+        <div class="compare-cell" data-label="Entra ID（P2）"><span class="partial">△</span> Entra ID Governance（追いついてきている）</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell label-cell">PAM（特権管理）</div>
+        <div class="compare-cell" data-label="Okta"><span class="partial">△</span> Okta Privileged Access（軽量、JIT）</div>
+        <div class="compare-cell" data-label="Entra ID（P2）"><span class="partial">△</span> Entra PIM（Azure/M365リソースに限定）</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell label-cell">コスト</div>
+        <div class="compare-cell" data-label="Okta"><span class="cross">✕</span> 別途コスト（E5に含まれない）</div>
+        <div class="compare-cell" data-label="Entra ID（P2）"><span class="check">◎</span> E3/E5に含まれる（追加費用なし）</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell label-cell">ベンダー依存</div>
+        <div class="compare-cell" data-label="Okta"><span class="check">◎</span> ベンダー中立</div>
+        <div class="compare-cell" data-label="Entra ID（P2）"><span class="cross">✕</span> Microsoft依存</div>
+      </div>
+    </div>
+
+    <div class="callout callout-blue">
+      EntraとOktaは「競合」ではなく「共存」するケースが多い。Oktaが上位に立ちEntraを配下に置くアーキテクチャが大企業の現実解。
+    </div>
+  </section>
+
+  <!-- ── SECTION 7: 選定基準 ── -->
+  <section id="usecases">
+    <div class="section-label">Section 07</div>
+    <h2>選定基準 — どの状況でOktaを推すか</h2>
+
+    <div class="grid-2">
+      <div class="card" style="border-color: var(--accent2);">
+        <div class="card-title" style="color:var(--accent);">Okta が刺さる状況</div>
+        <ul class="list">
+          <li>SaaSが多様で非Microsoft（Salesforce/Workday/ServiceNow中心）</li>
+          <li>AWS/GCPとAzureを併用するマルチクラウド環境</li>
+          <li>B2C・B2B問わず外部ユーザーのID管理が必要（Auth0）</li>
+          <li>入退社プロセスの自動化が課題でHRシステムがある</li>
+          <li>Microsoft依存リスクを避けたい（金融・インフラ系）</li>
+          <li>M&Aで複数テナントの統合が発生する</li>
+          <li>グローバル展開でテナント管理が複雑</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color: var(--border2);">
+        <div class="card-title" style="color:var(--text-dim);">Entra IDだけで充分な状況</div>
+        <ul class="list">
+          <li>M365 + Azure中心で非Microsoft SaaSがほぼない</li>
+          <li>E3/E5ライセンスを既に全社展開している</li>
+          <li>WindowsデバイスとAutopilotが主要な管理対象</li>
+          <li>組織規模が小さく、SaaSの数が限定的（20本以下）</li>
+          <li>IT予算が限られてOkta追加投資が難しい</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>ヒアリング時の確認ポイント</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>質問</th>
+            <th>Okta推しになる回答</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>今使っているSaaS上位10本は？</td>
+            <td>Salesforce/Workday/ServiceNow/Slack等の非Microsoft SaaSが複数</td>
+          </tr>
+          <tr>
+            <td>入退社の手続きはどのくらい時間かかる？</td>
+            <td>「数日かかる」「手動でIT部門が作業」「退社時の漏れが心配」</td>
+          </tr>
+          <tr>
+            <td>クラウドはAzureだけ？</td>
+            <td>「AWS/GCPも使っている」「マルチクラウドを推進したい」</td>
+          </tr>
+          <tr>
+            <td>外部パートナー・顧客向けのID管理は？</td>
+            <td>「外部ユーザーが多い」「顧客に自社サービスを提供している」</td>
+          </tr>
+          <tr>
+            <td>MicrosoftのE5を全員分持っている？</td>
+            <td>「一部だけ」「E3止まり」「Entra P2は別途買っていない」</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-amber">
+      <strong>Presalesポイント：</strong>「Entra IDがあるからOktaは要らない」という顧客には、現在のSaaS棚卸し（何本使っているか、プロビジョニングが自動化されているか）を先に一緒に確認するのが最速の突破口。
+    </div>
+  </section>
+
+</div><!-- /wrapper -->
+
+<script>
+  // Smooth scroll for nav links
+  document.querySelectorAll('nav a').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  // Active nav highlight on scroll
+  const sections = document.querySelectorAll('section');
+  const navLinks = document.querySelectorAll('nav a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(a => {
+          a.style.color = '';
+          a.style.borderBottomColor = '';
+        });
+        const link = document.querySelector(`nav a[href="#${entry.target.id}"]`);
+        if (link) {
+          link.style.color = 'var(--accent)';
+          link.style.borderBottomColor = 'var(--accent)';
+        }
+      }
+    });
+  }, { threshold: 0.3 });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

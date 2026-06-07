@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Azure RBAC vs Entra ID — 試験対策ガイド</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0a0e17;
+    --surface:  #111827;
+    --card:     #161f2e;
+    --border:   #1e2d45;
+    --azure:    #0078d4;
+    --entra:    #8b5cf6;
+    --ok:       #10b981;
+    --ng:       #ef4444;
+    --warn:     #f59e0b;
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --mono:     'JetBrains Mono', monospace;
+    --sans:     'Noto Sans JP', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #0a0e17 0%, #0d1b33 60%, #120d24 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 0 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(0,120,212,.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  header::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--azure), var(--entra), transparent);
+  }
+  .badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+    color: var(--azure);
+    border: 1px solid var(--azure);
+    border-radius: 3px;
+    padding: 3px 10px;
+    margin-bottom: 18px;
+    text-transform: uppercase;
+  }
+  header h1 {
+    font-size: clamp(22px, 4vw, 36px);
+    font-weight: 900;
+    letter-spacing: -.02em;
+    line-height: 1.2;
+  }
+  header h1 span.azure { color: var(--azure); }
+  header h1 span.entra { color: var(--entra); }
+  header p.sub {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* ── Layout ── */
+  .container { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 48px 0; border-bottom: 1px solid var(--border); }
+  section:last-child { border-bottom: none; }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2 .num {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--azure);
+    border: 1px solid var(--azure);
+    border-radius: 3px;
+    padding: 2px 7px;
+  }
+
+  h3 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+
+  /* ── 2-column comparison ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card.azure-card { border-top: 3px solid var(--azure); }
+  .card.entra-card { border-top: 3px solid var(--entra); }
+
+  .card-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .1em;
+    font-weight: 700;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  .card.azure-card .card-label { color: var(--azure); }
+  .card.entra-card .card-label { color: var(--entra); }
+
+  .card ul { list-style: none; }
+  .card ul li {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .card ul li:last-child { border-bottom: none; }
+  .card ul li::before {
+    content: '→';
+    font-family: var(--mono);
+    color: var(--muted);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── Key principle box ── */
+  .principle {
+    background: linear-gradient(135deg, rgba(0,120,212,.08), rgba(139,92,246,.08));
+    border: 1px solid rgba(139,92,246,.35);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+  .principle strong {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 6px;
+    color: #c4b5fd;
+  }
+
+  .warn-box {
+    background: rgba(245,158,11,.07);
+    border: 1px solid rgba(245,158,11,.35);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 13.5px;
+    color: #fcd34d;
+    margin-bottom: 16px;
+  }
+  .warn-box strong { display: block; margin-bottom: 4px; }
+
+  /* ── Roles table ── */
+  .role-table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead tr {
+    background: rgba(0,120,212,.15);
+  }
+  th, td {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    font-weight: 700;
+    color: var(--azure);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  tr:hover td { background: rgba(255,255,255,.02); }
+  .ok  { color: var(--ok);  font-weight: 700; }
+  .ng  { color: var(--ng);  }
+  .na  { color: var(--muted); }
+
+  td .role-name {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: rgba(255,255,255,.05);
+    padding: 2px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .tag-azure { color: var(--azure); }
+  .tag-entra { color: var(--entra); }
+
+  /* ── Decision tree ── */
+  .tree {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    font-size: 13.5px;
+  }
+  .tree-step {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    position: relative;
+  }
+  .tree-step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 19px; top: 40px;
+    width: 2px; height: calc(100% + 0px);
+    background: var(--border);
+  }
+  .step-icon {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+    z-index: 1;
+  }
+  .step-icon.q  { background: rgba(0,120,212,.2);  color: var(--azure); border: 2px solid var(--azure); }
+  .step-icon.ok { background: rgba(16,185,129,.2); color: var(--ok);    border: 2px solid var(--ok); }
+  .step-icon.ng { background: rgba(239,68,68,.2);  color: var(--ng);    border: 2px solid var(--ng); }
+
+  .step-body {
+    padding: 8px 0 28px;
+    flex: 1;
+  }
+  .step-body .q-text {
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .branch-list { display: flex; flex-direction: column; gap: 6px; }
+  .branch {
+    display: flex; gap: 10px; align-items: center;
+    font-size: 13px;
+  }
+  .branch-cond {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .branch-cond.yes { background: rgba(16,185,129,.15); color: var(--ok); }
+  .branch-cond.no  { background: rgba(239,68,68,.15);  color: var(--ng); }
+
+  /* ── Scenario replay ── */
+  .scenario-table-wrap { overflow-x: auto; }
+  .scenario-answer {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .answer-row {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    font-size: 13.5px;
+  }
+  .answer-row .q-label { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+  .answer-row .a-chip {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .answer-row .a-chip.correct {
+    background: rgba(16,185,129,.15);
+    color: var(--ok);
+    border: 1px solid rgba(16,185,129,.3);
+  }
+  .answer-row .a-chip.wrong {
+    background: rgba(239,68,68,.1);
+    color: var(--ng);
+    border: 1px solid rgba(239,68,68,.25);
+    text-decoration: line-through;
+  }
+  .reason { font-size: 12.5px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+
+  /* ── Tips ── */
+  .tip-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .tip-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+    font-size: 13px;
+  }
+  .tip-card h4 {
+    font-size: 13.5px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .tip-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    background: rgba(0,120,212,.2);
+    color: var(--azure);
+    padding: 1px 6px;
+    border-radius: 2px;
+  }
+  .tip-card p { color: var(--muted); line-height: 1.65; }
+
+  /* ── Scope diagram ── */
+  .scope-diagram {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 16px 0;
+  }
+  .scope-level {
+    width: 100%;
+    max-width: 560px;
+    border-radius: 8px;
+    padding: 12px 20px;
+    text-align: center;
+    font-size: 13px;
+    position: relative;
+  }
+  .scope-level.mgmt  { background: rgba(0,120,212,.12); border: 1px solid rgba(0,120,212,.4); }
+  .scope-level.sub   { background: rgba(0,120,212,.09); border: 1px solid rgba(0,120,212,.3); width: 88%; }
+  .scope-level.rg    { background: rgba(0,120,212,.06); border: 1px solid rgba(0,120,212,.2); width: 76%; }
+  .scope-level.res   { background: rgba(0,120,212,.03); border: 1px solid rgba(0,120,212,.15); width: 64%; }
+  .scope-arrow {
+    font-family: var(--mono);
+    color: var(--muted);
+    font-size: 20px;
+    line-height: 1;
+    margin: 4px 0;
+  }
+  .scope-level strong { font-weight: 700; }
+  .scope-level span   { color: var(--muted); font-size: 12px; }
+
+  /* ── Inline code ── */
+  code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: rgba(255,255,255,.07);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+
+  /* ── Footer ── */
+  footer {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 20px 0;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  section { animation: fadeUp .4s ease both; }
+  section:nth-child(2) { animation-delay: .05s; }
+  section:nth-child(3) { animation-delay: .1s; }
+  section:nth-child(4) { animation-delay: .15s; }
+  section:nth-child(5) { animation-delay: .2s; }
+  section:nth-child(6) { animation-delay: .25s; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="badge">AZ-104 / SC-300 試験対策</div>
+    <h1>
+      <span class="azure">Azure RBAC</span> と<br>
+      <span class="entra">Microsoft Entra ID</span> ロールの完全攻略
+    </h1>
+    <p class="sub">権限・スコープ・継承の仕組みを理解して類似問題を確実に解く</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ═══════════════════════════════════════ SECTION 1 -->
+  <section>
+    <h2><span class="num">01</span> 最重要前提 — 2つのロール体系は完全に独立</h2>
+
+    <div class="principle">
+      <strong>🔑 試験の核心：Entra IDロール ≠ Azure RBACロール</strong>
+      Microsoft製品には「テナント（Entra ID）」と「Azureサブスクリプション」という2つの独立した管理面がある。
+      どちらのロールを持っていても、もう一方には自動的に権限が付与<strong>されない</strong>。
+    </div>
+
+    <div class="two-col">
+      <div class="card entra-card">
+        <div class="card-label">🪪 Microsoft Entra ID ロール</div>
+        <h3 style="color:var(--entra)">テナント操作に効く</h3>
+        <ul>
+          <li>ユーザー・グループの作成・削除</li>
+          <li>アプリ登録・Enterprise Apps管理</li>
+          <li>Conditional Accessポリシー管理</li>
+          <li>MFA/SSPR設定</li>
+          <li>Entra ID自体の設定変更</li>
+        </ul>
+        <div style="margin-top:14px; font-size:12px; color:var(--muted)">
+          Azure リソース（VM・ストレージ等）へのアクセスは付与しない
+        </div>
+      </div>
+
+      <div class="card azure-card">
+        <div class="card-label">🛡️ Azure RBAC ロール</div>
+        <h3 style="color:var(--azure)">Azureリソース操作に効く</h3>
+        <ul>
+          <li>VM・ネットワーク・ストレージの操作</li>
+          <li>リソースグループ内のリソース管理</li>
+          <li>RBAC ロール割り当て（Ownerのみ）</li>
+          <li>コスト・請求情報の参照</li>
+          <li>サブスクリプション設定の変更</li>
+        </ul>
+        <div style="margin-top:14px; font-size:12px; color:var(--muted)">
+          Entra ID テナント操作（アプリ登録など）は行えない
+        </div>
+      </div>
+    </div>
+
+    <div class="warn-box" style="margin-top:16px">
+      <strong>⚠️ 唯一の例外：Global Administrator</strong>
+      Entra IDの「全体管理者」は、Azure上のサブスクリプション管理権限を<em>昇格操作で取得できる</em>が、デフォルトでは持っていない。試験では「GA = Azure全権限あり」と思い込まないこと。
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ SECTION 2 -->
+  <section>
+    <h2><span class="num">02</span> スコープと継承の仕組み</h2>
+
+    <p style="margin-bottom:20px; font-size:13.5px; color:var(--muted)">
+      Azure RBACはスコープ階層を持ち、<strong style="color:var(--text)">上位スコープで割り当てたロールは下位に自動継承</strong>される。
+    </p>
+
+    <div class="scope-diagram">
+      <div class="scope-level mgmt">
+        <strong>管理グループ</strong>
+        <span>（Management Group）</span>
+      </div>
+      <div class="scope-arrow">↓ 継承</div>
+      <div class="scope-level sub">
+        <strong>サブスクリプション</strong>
+        <span>← User1 = Owner / User2 = Contributor / User3 = Security Admin</span>
+      </div>
+      <div class="scope-arrow">↓ 継承</div>
+      <div class="scope-level rg">
+        <strong>リソースグループ</strong>
+        <span>resourcegroup1 ← サブスクリプションのロールがここにも適用される</span>
+      </div>
+      <div class="scope-arrow">↓ 継承</div>
+      <div class="scope-level res">
+        <strong>個別リソース</strong>
+        <span>（VM, Storage, etc.）</span>
+      </div>
+    </div>
+
+    <div class="principle" style="margin-top:20px">
+      <strong>💡 継承の実際例</strong>
+      User1 が「サブスクリプション Owner」を持つ = resourcegroup1 でも Owner として扱われる。
+      リソースグループに明示的にロール設定がなくても、上位から継承されるため権限は有効。
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ SECTION 3 -->
+  <section>
+    <h2><span class="num">03</span> 主要ロール早見表</h2>
+
+    <div class="role-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ロール名</th>
+            <th>種別</th>
+            <th>リソース作成<br>(VM等)</th>
+            <th>RBAC管理<br>(権限付与)</th>
+            <th>アプリ登録<br>(Entra)</th>
+            <th>CA管理<br>(Entra)</th>
+            <th>セキュリティ<br>ポリシー</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="role-name">Owner</span></td>
+            <td><span class="tag-azure">Azure RBAC</span></td>
+            <td class="ok">✓ 可</td>
+            <td class="ok">✓ 可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+          </tr>
+          <tr>
+            <td><span class="role-name">Contributor</span></td>
+            <td><span class="tag-azure">Azure RBAC</span></td>
+            <td class="ok">✓ 可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+          </tr>
+          <tr>
+            <td><span class="role-name">Reader</span></td>
+            <td><span class="tag-azure">Azure RBAC</span></td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+          </tr>
+          <tr>
+            <td><span class="role-name">User Access Administrator</span></td>
+            <td><span class="tag-azure">Azure RBAC</span></td>
+            <td class="ng">✗ 不可</td>
+            <td class="ok">✓ 可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+          </tr>
+          <tr>
+            <td><span class="role-name">Security Admin</span></td>
+            <td><span class="tag-azure">Azure RBAC</span></td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ok">✓ 可</td>
+          </tr>
+          <tr>
+            <td><span class="role-name">Application Developer</span></td>
+            <td><span class="tag-entra">Entra ID</span></td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ok">✓ 可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+          </tr>
+          <tr>
+            <td><span class="role-name">Conditional Access Admin</span></td>
+            <td><span class="tag-entra">Entra ID</span></td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ng">✗ 不可</td>
+            <td class="ok">✓ 可</td>
+            <td class="ng">✗ 不可</td>
+          </tr>
+          <tr>
+            <td><span class="role-name">Global Administrator</span></td>
+            <td><span class="tag-entra">Entra ID</span></td>
+            <td class="na">△ ※昇格後</td>
+            <td class="na">△ ※昇格後</td>
+            <td class="ok">✓ 可</td>
+            <td class="ok">✓ 可</td>
+            <td class="ok">✓ 可</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="warn-box" style="margin-top:14px">
+      <strong>⚠️ Security Admin の注意点</strong>
+      Azure RBACの「Security Admin」は Defender for Cloud / Microsoft Sentinel のセキュリティポリシー・アラート管理に特化。<code>Microsoft.Compute/*</code> を持たないため VM作成はできない。
+      Entra IDの「Security Administrator」ロールとは別物であることにも注意。
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ SECTION 4 -->
+  <section>
+    <h2><span class="num">04</span> 問題を解くデシジョンツリー</h2>
+
+    <div class="tree">
+
+      <div class="tree-step">
+        <div class="step-icon q">Q1</div>
+        <div class="step-body">
+          <div class="q-text">操作の対象はどこか？</div>
+          <div class="branch-list">
+            <div class="branch">
+              <span class="branch-cond yes">Entra/テナント</span>
+              アプリ登録・CA・ユーザー管理 → <strong style="color:var(--entra)">Entraロールを持つユーザーを探す</strong>
+            </div>
+            <div class="branch">
+              <span class="branch-cond no">Azureリソース</span>
+              VM・RG・ストレージ等 → <strong style="color:var(--azure)">Azure RBACロールを持つユーザーを探す</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tree-step">
+        <div class="step-icon q">Q2</div>
+        <div class="step-body">
+          <div class="q-text">操作の種類は何か？</div>
+          <div class="branch-list">
+            <div class="branch">
+              <span class="branch-cond yes">権限管理</span>
+              RBAC割り当て = <strong>Owner または User Access Administrator</strong> が必要
+            </div>
+            <div class="branch">
+              <span class="branch-cond yes">リソース作成</span>
+              VM等の作成 = <strong>Owner または Contributor</strong> で可
+            </div>
+            <div class="branch">
+              <span class="branch-cond yes">読み取り</span>
+              参照のみ = <strong>Reader 以上</strong>で可（ほぼ全員）
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tree-step">
+        <div class="step-icon q">Q3</div>
+        <div class="step-body">
+          <div class="q-text">スコープを確認する</div>
+          <div class="branch-list">
+            <div class="branch">
+              <span class="branch-cond yes">サブスクリプション</span>
+              → リソースグループにも<strong>継承</strong>される
+            </div>
+            <div class="branch">
+              <span class="branch-cond no">RGスコープ限定</span>
+              → そのRG内のみ有効（サブスクリプション全体には影響しない）
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tree-step">
+        <div class="step-icon q">Q4</div>
+        <div class="step-body">
+          <div class="q-text">Azure RBACロールが「None」のユーザーは？</div>
+          <div class="branch-list">
+            <div class="branch">
+              <span class="branch-cond no">答え</span>
+              Entraロールを持っていても<strong>Azureリソース操作は一切できない</strong>（User4 パターン）
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ SECTION 5 -->
+  <section>
+    <h2><span class="num">05</span> 元の問題 — 解答と解説</h2>
+
+    <div class="scenario-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ユーザー</th>
+            <th>Entra IDロール</th>
+            <th>サブスクリプションロール</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>User1</td>
+            <td><span class="role-name" style="color:var(--entra)">Application Developer</span></td>
+            <td><span class="role-name" style="color:var(--azure)">Owner</span></td>
+          </tr>
+          <tr>
+            <td>User2</td>
+            <td class="na">—</td>
+            <td><span class="role-name" style="color:var(--azure)">Contributor</span></td>
+          </tr>
+          <tr>
+            <td>User3</td>
+            <td class="na">—</td>
+            <td><span class="role-name" style="color:var(--azure)">Security Admin</span></td>
+          </tr>
+          <tr>
+            <td>User4</td>
+            <td><span class="role-name" style="color:var(--entra)">Conditional Access Administrator</span></td>
+            <td class="na">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="scenario-answer">
+
+      <div class="answer-row">
+        <div>
+          <div class="q-label">Q1. resourcegroup1 のパーミッション（RBAC）を管理できるユーザーは？</div>
+          <div style="font-weight:700">User1 のみ</div>
+          <div class="reason">
+            RBAC ロール割り当てには <code>Microsoft.Authorization/*/write</code> が必要
+            = <strong>Owner</strong> または <strong>User Access Administrator</strong> のみ。<br>
+            Contributor（User2）は<u>リソース操作はできるが権限付与はできない</u>。<br>
+            Security Admin（User3）・Entra専用ロール（User4）も対象外。
+          </div>
+          <div style="margin-top:8px; display:flex; gap:8px; align-items:center; font-size:12px;">
+            <span class="a-chip wrong">画面の選択: User1 and User2</span>
+            <span style="color:var(--muted)">→</span>
+            <span class="a-chip correct">正解: User1 only</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="answer-row">
+        <div>
+          <div class="q-label">Q2. resourcegroup1 で VM を作成できるユーザーは？</div>
+          <div style="font-weight:700">User1 and User2</div>
+          <div class="reason">
+            VM 作成には <code>Microsoft.Compute/virtualMachines/write</code> が必要。<br>
+            <strong>Owner</strong>（User1）と <strong>Contributor</strong>（User2）は両方ともこの権限を含む。<br>
+            Security Admin（User3）は Compute 権限を持たない。User4 は Azure RBAC ロール自体がない。
+          </div>
+          <div style="margin-top:8px;">
+            <span class="a-chip correct">正解: User1 and User2 ✓</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="answer-row">
+        <div>
+          <div class="q-label">Q3. テナントにアプリを登録できるユーザーは？</div>
+          <div style="font-weight:700">User1 のみ</div>
+          <div class="reason">
+            アプリ登録は <strong>Entra IDの操作</strong>。<br>
+            User1 は Entra ID「Application Developer」ロールを保有 → 登録可。<br>
+            User2・User3 は Entra ID ロールなし。User4 の「Conditional Access Administrator」はCA管理専用でアプリ登録権限なし。<br>
+            ※テナント設定で「全ユーザーにアプリ登録を許可」が ON の場合は全員可だが、試験では特に言及がない限りデフォルト OFF（制限あり）として判断する。
+          </div>
+          <div style="margin-top:8px;">
+            <span class="a-chip correct">正解: User1 ✓</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ SECTION 6 -->
+  <section>
+    <h2><span class="num">06</span> 類似問題で使える解き方のコツ</h2>
+
+    <div class="tip-grid">
+      <div class="tip-card">
+        <h4><span class="tip-num">TIP 1</span> 「None」が答えを絞る最短ルート</h4>
+        <p>Azure RBAC が None のユーザーは Azure 操作<strong>一切不可</strong>。Entra ロールが None のユーザーは Entra 操作<strong>一切不可</strong>。まず None を確認して除外すると残りの選択肢が絞れる。</p>
+      </div>
+
+      <div class="tip-card">
+        <h4><span class="tip-num">TIP 2</span> RBAC管理 = Owner か UAA だけ</h4>
+        <p>「ロールを割り当てる」「パーミッションを管理する」= <code>Microsoft.Authorization/*/write</code>。これを持つのは <strong>Owner</strong> と <strong>User Access Administrator</strong> のみ。Contributor でも不可という点は頻出。</p>
+      </div>
+
+      <div class="tip-card">
+        <h4><span class="tip-num">TIP 3</span> スコープは上位から下位に流れる</h4>
+        <p>サブスクリプション Owner → RG Owner → リソース Owner が自動的に継承される。「subscriptionA の Contributor が resourcegroup1 でリソース作成できるか」→ YES（継承されるため）。</p>
+      </div>
+
+      <div class="tip-card">
+        <h4><span class="tip-num">TIP 4</span> 操作の「場所」で種別を判断</h4>
+        <p>「Azureポータルで VM/ストレージ/ネットワーク操作」→ Azure RBAC。<br>「Entra ポータルでアプリ/ユーザー/CA 操作」→ Entra ロール。<br>どちらの画面の話かを意識すると分類が速くなる。</p>
+      </div>
+
+      <div class="tip-card">
+        <h4><span class="tip-num">TIP 5</span> Security Admin は「Compute なし」と覚える</h4>
+        <p>Security Admin は Defender for Cloud や Sentinel のポリシー・アラート管理に特化。VM 作成・削除などのコンピューティング操作はできない。「セキュリティ」という名称に惑わされない。</p>
+      </div>
+
+      <div class="tip-card">
+        <h4><span class="tip-num">TIP 6</span> アプリ登録のテナント設定に注意</h4>
+        <p>デフォルトでは全ユーザーがアプリ登録可能。ただし試験問題で「Entra ロールを持つ人が答えになっている」場合は設定が制限済みと読む。問題文に「Users can register applications = No」と書かれていたら Application Developer/Admin が必要。</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Azure RBAC × Entra ID 試験対策ノート — AZ-104 / SC-300 / AZ-500 対応
+</footer>
+
+</body>
+</html>
