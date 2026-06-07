@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Active Directory 構造理解ガイド</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #1e2530;
+  --surface3: #252d3a;
+  --border: #30363d;
+  --accent: #4f9cf9;
+  --accent2: #7c6af7;
+  --accent3: #3ecf8e;
+  --accent4: #f7b731;
+  --accent5: #fc5c65;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --text-dim: #484f58;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-weight:300;line-height:1.7;min-height:100vh}
+
+/* HEADER */
+header{padding:56px 24px 36px;border-bottom:1px solid var(--border);position:relative;overflow:hidden;text-align:center}
+header::before{content:'';position:absolute;top:-100px;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(79,156,249,0.13) 0%,transparent 70%);pointer-events:none}
+.header-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:.15em;text-transform:uppercase;margin-bottom:10px}
+h1{font-family:'Syne',sans-serif;font-size:clamp(26px,6vw,48px);font-weight:800;line-height:1.1;letter-spacing:-.02em;background:linear-gradient(135deg,#e6edf3 30%,#4f9cf9 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header-sub{margin-top:10px;color:var(--text-muted);font-size:13px;max-width:520px;margin-left:auto;margin-right:auto}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(13,17,23,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;scrollbar-width:none;padding:0 8px}
+nav::-webkit-scrollbar{display:none}
+nav a{color:var(--text-muted);text-decoration:none;font-size:12px;padding:13px 12px;white-space:nowrap;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;flex-shrink:0}
+nav a:hover{color:var(--text);border-bottom-color:var(--accent)}
+
+/* MAIN */
+main{max-width:960px;margin:0 auto;padding:40px 16px 80px;display:flex;flex-direction:column;gap:56px}
+
+/* SECTION */
+section{display:flex;flex-direction:column;gap:18px}
+.section-header{display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.section-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:rgba(79,156,249,.1);border:1px solid rgba(79,156,249,.25);padding:2px 7px;border-radius:4px;letter-spacing:.1em;flex-shrink:0}
+h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:700}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 20px;transition:border-color .2s}
+.card:hover{border-color:var(--text-dim)}
+.card-title{font-size:14px;font-weight:500;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.card p,.card li{font-size:13px;color:var(--text-muted);line-height:1.75}
+.card ul{padding-left:16px}
+.card li{margin-bottom:4px}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+
+/* CALLOUT */
+.callout{display:flex;gap:12px;padding:14px 18px;border-radius:8px;font-size:13px;line-height:1.7}
+.callout-icon{font-size:15px;flex-shrink:0;margin-top:1px}
+.callout-title{font-weight:500;margin-bottom:3px;font-size:13.5px}
+.callout.info{background:rgba(79,156,249,.08);border:1px solid rgba(79,156,249,.2)}
+.callout.warn{background:rgba(247,183,49,.08);border:1px solid rgba(247,183,49,.2)}
+.callout.danger{background:rgba(252,92,101,.08);border:1px solid rgba(252,92,101,.2)}
+.callout.success{background:rgba(62,207,142,.08);border:1px solid rgba(62,207,142,.2)}
+.callout.info .callout-title{color:var(--accent)}
+.callout.warn .callout-title{color:var(--accent4)}
+.callout.danger .callout-title{color:var(--accent5)}
+.callout.success .callout-title{color:var(--accent3)}
+.callout p,.callout li{color:var(--text-muted)}
+.callout ul{padding-left:16px;margin-top:4px}
+
+/* BADGE */
+.badge{display:inline-block;font-size:10px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:99px}
+.badge-blue{background:rgba(79,156,249,.15);color:var(--accent);border:1px solid rgba(79,156,249,.3)}
+.badge-green{background:rgba(62,207,142,.12);color:var(--accent3);border:1px solid rgba(62,207,142,.3)}
+.badge-yellow{background:rgba(247,183,49,.12);color:var(--accent4);border:1px solid rgba(247,183,49,.3)}
+.badge-red{background:rgba(252,92,101,.12);color:var(--accent5);border:1px solid rgba(252,92,101,.3)}
+.badge-purple{background:rgba(124,106,247,.12);color:var(--accent2);border:1px solid rgba(124,106,247,.3)}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:520px}
+thead{background:var(--surface2)}
+thead th{padding:10px 14px;text-align:left;font-weight:500;color:var(--text-muted);font-size:11px;letter-spacing:.04em;border-bottom:1px solid var(--border)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+tbody td{padding:11px 14px;color:var(--text-muted);vertical-align:top}
+tbody td:first-child{color:var(--text);font-weight:500}
+
+/* CODE */
+code{font-family:'JetBrains Mono',monospace;font-size:11.5px;background:var(--surface3);border:1px solid var(--border);padding:1px 5px;border-radius:3px;color:var(--accent3)}
+
+/* CHECKLIST */
+.checklist{display:flex;flex-direction:column;gap:8px}
+.check-item{display:flex;align-items:flex-start;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:13px 16px;font-size:13px;cursor:pointer;transition:border-color .2s,background .2s;user-select:none}
+.check-item:hover{border-color:var(--text-dim)}
+.check-item.checked{border-color:rgba(62,207,142,.4);background:rgba(62,207,142,.04)}
+.check-box{width:18px;height:18px;border:2px solid var(--border);border-radius:4px;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--accent3);transition:border-color .2s,background .2s}
+.check-item.checked .check-box{border-color:var(--accent3);background:rgba(62,207,142,.15)}
+.check-q{color:var(--text);font-weight:500;margin-bottom:2px}
+.check-hint{color:var(--text-dim);font-size:11.5px;line-height:1.6}
+
+/* hl */
+.hl-blue{color:var(--accent);font-weight:500}
+.hl-green{color:var(--accent3);font-weight:500}
+.hl-yellow{color:var(--accent4);font-weight:500}
+.hl-red{color:var(--accent5);font-weight:500}
+.hl-purple{color:var(--accent2);font-weight:500}
+
+/* =====================
+   CSS DIAGRAMS
+   ===================== */
+
+/* --- フォレスト/ツリー/ドメイン 構造図 --- */
+.forest-diagram{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px 20px;overflow-x:auto}
+.fd-forest{border:2px solid var(--accent2);border-radius:10px;padding:14px 16px;position:relative;margin-bottom:0}
+.fd-forest-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.fd-forest-label::before{content:'';display:inline-block;width:8px;height:8px;background:var(--accent2);border-radius:50%}
+.fd-trees{display:flex;gap:12px;flex-wrap:wrap}
+.fd-tree{border:1.5px solid var(--accent);border-radius:8px;padding:12px 14px;flex:1;min-width:180px}
+.fd-tree-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.fd-tree-label::before{content:'🌳';font-size:11px}
+.fd-domains{display:flex;flex-direction:column;gap:6px}
+.fd-domain{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;font-size:12px}
+.fd-domain-dot{width:8px;height:8px;border-radius:50%;background:var(--accent3);flex-shrink:0}
+.fd-domain-dot.root{background:var(--accent4)}
+.fd-domain-name{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);flex:1}
+.fd-domain-tag{font-size:10px;color:var(--text-dim)}
+.fd-connector{width:2px;background:var(--border);height:8px;margin-left:3px}
+.fd-indent{margin-left:18px}
+.fd-trust-line{display:flex;align-items:center;gap:8px;padding:10px 0;margin:8px 0}
+.fd-trust-arrow{flex:1;height:2px;background:linear-gradient(90deg,var(--accent4),var(--accent4));position:relative;border-radius:1px}
+.fd-trust-arrow::after{content:'◀▶';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);padding:0 6px;font-size:10px;color:var(--accent4);white-space:nowrap}
+.fd-trust-label{font-size:10px;color:var(--accent4);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.fd-separate{margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)}
+
+/* --- 信頼関係フロー図 --- */
+.trust-diagram{display:flex;flex-direction:column;gap:16px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:12px}
+.trust-row{display:flex;align-items:center;gap:0;position:relative}
+.trust-box{border-radius:8px;padding:12px 14px;text-align:center;min-width:120px;flex-shrink:0}
+.trust-box .tb-label{font-size:11px;color:var(--text-muted);margin-bottom:4px}
+.trust-box .tb-name{font-size:13px;font-weight:500;color:var(--text);font-family:'JetBrains Mono',monospace}
+.trust-box .tb-role{font-size:10px;margin-top:4px;padding:2px 6px;border-radius:4px;display:inline-block}
+.trust-conn{flex:1;display:flex;flex-direction:column;align-items:center;padding:0 8px;min-width:80px}
+.trust-line{width:100%;height:2px;position:relative}
+.trust-line.bidirectional{background:linear-gradient(90deg,transparent,var(--accent3) 20%,var(--accent3) 80%,transparent)}
+.trust-line.bidirectional::before,.trust-line.bidirectional::after{content:'◀';position:absolute;top:50%;transform:translateY(-50%);font-size:10px;color:var(--accent3)}
+.trust-line.bidirectional::before{left:2px}
+.trust-line.bidirectional::after{content:'▶';right:2px}
+.trust-line.oneway{background:linear-gradient(90deg,transparent,var(--accent4) 20%,var(--accent4) 80%,transparent)}
+.trust-line.oneway::after{content:'▶';position:absolute;right:2px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--accent4)}
+.trust-meta{font-size:10px;color:var(--text-dim);margin-top:4px;text-align:center;font-family:'JetBrains Mono',monospace}
+.trust-box.a-domain{background:rgba(79,156,249,.1);border:1.5px solid rgba(79,156,249,.35)}
+.trust-box.b-domain{background:rgba(62,207,142,.1);border:1.5px solid rgba(62,207,142,.35)}
+.trust-box.c-domain{background:rgba(124,106,247,.1);border:1.5px solid rgba(124,106,247,.35)}
+.trust-box.warn-domain{background:rgba(247,183,49,.08);border:1.5px solid rgba(247,183,49,.3)}
+
+/* --- 認証フロー図 --- */
+.auth-flow{display:flex;flex-direction:column;gap:0;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:12px}
+.af-step{display:flex;gap:12px;align-items:flex-start;padding:10px 0;position:relative}
+.af-step:not(:last-child)::after{content:'';position:absolute;left:15px;top:38px;width:2px;bottom:-10px;background:var(--border)}
+.af-num{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;flex-shrink:0;z-index:1}
+.af-body{flex:1;padding-top:4px}
+.af-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px}
+.af-desc{font-size:12px;color:var(--text-muted);line-height:1.6}
+.af-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:3px;margin-left:6px;font-family:'JetBrains Mono',monospace}
+
+/* --- ハイブリッドID図 --- */
+.hybrid-diagram{display:flex;flex-direction:column;align-items:center;gap:0;padding:24px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}
+.hd-layer{width:100%;max-width:560px;border-radius:10px;padding:14px 18px;text-align:center}
+.hd-layer-title{font-size:13px;font-weight:500;margin-bottom:8px}
+.hd-items{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.hd-item{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface3);color:var(--text-muted);font-family:'JetBrains Mono',monospace}
+.hd-arrow{display:flex;flex-direction:column;align-items:center;padding:4px 0;gap:2px}
+.hd-arrow-line{width:2px;height:20px;background:linear-gradient(180deg,var(--accent),var(--accent2))}
+.hd-arrow-head{font-size:14px;color:var(--accent2)}
+.hd-arrow-label{font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+.hd-onpre{background:rgba(79,156,249,.07);border:1.5px solid rgba(79,156,249,.3)}
+.hd-sync{background:rgba(247,183,49,.07);border:1.5px dashed rgba(247,183,49,.4)}
+.hd-cloud{background:rgba(124,106,247,.07);border:1.5px solid rgba(124,106,247,.3)}
+.hd-apps{background:rgba(62,207,142,.07);border:1.5px solid rgba(62,207,142,.3)}
+
+/* --- 攻撃パス図 --- */
+.attack-path{display:flex;flex-direction:column;gap:8px;padding:20px;background:var(--surface);border:1px solid rgba(252,92,101,.2);border-radius:12px}
+.ap-step{display:flex;gap:10px;align-items:center}
+.ap-box{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;flex:1;font-size:12px;color:var(--text-muted)}
+.ap-box strong{color:var(--text);font-weight:500}
+.ap-arrow{color:var(--accent5);font-size:14px;flex-shrink:0}
+.ap-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:rgba(252,92,101,.1)}
+.ap-tier{font-size:10px;font-family:'JetBrains Mono',monospace;padding:1px 6px;border-radius:3px}
+.ap-tier0{background:rgba(252,92,101,.2);color:var(--accent5);border:1px solid rgba(252,92,101,.3)}
+.ap-tier1{background:rgba(247,183,49,.15);color:var(--accent4);border:1px solid rgba(247,183,49,.3)}
+.ap-tier2{background:rgba(62,207,142,.12);color:var(--accent3);border:1px solid rgba(62,207,142,.3)}
+
+/* --- 構成パターン図 --- */
+.pattern-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.pb-label{font-size:10px;font-family:'JetBrains Mono',monospace}
+
+/* SVG diagram container */
+.svg-wrap{width:100%;overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.svg-wrap svg{display:block;margin:0 auto;max-width:100%;height:auto}
+
+/* sub-heading */
+.sub-h{font-size:12px;font-weight:500;letter-spacing:.06em;margin-top:6px;margin-bottom:6px;padding-left:2px}
+.sub-h.blue{color:var(--accent)}
+.sub-h.purple{color:var(--accent2)}
+.sub-h.green{color:var(--accent3)}
+.sub-h.yellow{color:var(--accent4)}
+
+@media(max-width:600px){
+  .grid-2,.grid-3{grid-template-columns:1fr}
+  .fd-trees{flex-direction:column}
+  .fd-tree{min-width:unset}
+  .trust-row{flex-wrap:wrap;justify-content:center}
+  .trust-conn{min-width:60px}
+  .hd-layer{max-width:100%}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-tag">// Active Directory — Field Reference</div>
+  <h1>Active Directory<br>構造理解ガイド</h1>
+  <p class="header-sub">初学者向け。ドメイン・ツリー・フォレスト・信頼関係の概念をCSS図解で整理。顧客ヒアリングチェックリスト付き。</p>
+</header>
+
+<nav>
+  <a href="#basics">基本概念</a>
+  <a href="#structure">構造階層</a>
+  <a href="#trust">信頼関係</a>
+  <a href="#auth">認証の仕組み</a>
+  <a href="#components">コンポーネント</a>
+  <a href="#hybrid">ハイブリッドID</a>
+  <a href="#security">セキュリティ</a>
+  <a href="#hearing">ヒアリング</a>
+  <a href="#patterns">構成パターン</a>
+</nav>
+
+<main>
+
+<!-- ①基本概念 -->
+<section id="basics">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2>基本概念：ADとは何を管理するものか</h2>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">💡</span>
+    <div>
+      <div class="callout-title">一言で言うと</div>
+      <p>Active Directory（AD）は「<span class="hl-blue">誰が・どのリソースに・どんな権限でアクセスできるか</span>」を一元管理するWindowsのオンプレID基盤。</p>
+    </div>
+  </div>
+
+  <!-- 3機能のCSS図 -->
+  <div class="svg-wrap">
+    <svg viewBox="0 0 640 180" xmlns="http://www.w3.org/2000/svg" style="min-width:300px">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#4f9cf9"/>
+        </marker>
+      </defs>
+      <!-- center AD circle -->
+      <circle cx="320" cy="90" r="48" fill="rgba(79,156,249,0.12)" stroke="#4f9cf9" stroke-width="1.5"/>
+      <text x="320" y="85" text-anchor="middle" fill="#e6edf3" font-family="'Syne',sans-serif" font-size="14" font-weight="700">Active</text>
+      <text x="320" y="103" text-anchor="middle" fill="#e6edf3" font-family="'Syne',sans-serif" font-size="14" font-weight="700">Directory</text>
+
+      <!-- left: Auth -->
+      <rect x="20" y="56" width="120" height="68" rx="8" fill="rgba(62,207,142,0.1)" stroke="#3ecf8e" stroke-width="1.2"/>
+      <text x="80" y="78" text-anchor="middle" fill="#3ecf8e" font-size="18">🔐</text>
+      <text x="80" y="98" text-anchor="middle" fill="#e6edf3" font-family="'Noto Sans JP',sans-serif" font-size="12" font-weight="500">認証</text>
+      <text x="80" y="114" text-anchor="middle" fill="#8b949e" font-family="'Noto Sans JP',sans-serif" font-size="10">あなたは誰？</text>
+      <line x1="140" y1="90" x2="268" y2="90" stroke="#4f9cf9" stroke-width="1.2" marker-end="url(#arr)"/>
+
+      <!-- right: Authz -->
+      <rect x="500" y="56" width="120" height="68" rx="8" fill="rgba(124,106,247,0.1)" stroke="#7c6af7" stroke-width="1.2"/>
+      <text x="560" y="78" text-anchor="middle" fill="#7c6af7" font-size="18">🔑</text>
+      <text x="560" y="98" text-anchor="middle" fill="#e6edf3" font-family="'Noto Sans JP',sans-serif" font-size="12" font-weight="500">認可</text>
+      <text x="560" y="114" text-anchor="middle" fill="#8b949e" font-family="'Noto Sans JP',sans-serif" font-size="10">何ができる？</text>
+      <line x1="372" y1="90" x2="496" y2="90" stroke="#4f9cf9" stroke-width="1.2" marker-end="url(#arr)"/>
+
+      <!-- bottom: Policy -->
+      <rect x="236" y="152" width="168" height="24" rx="6" fill="rgba(247,183,49,0.1)" stroke="#f7b731" stroke-width="1.2"/>
+      <text x="320" y="168" text-anchor="middle" fill="#f7b731" font-family="'Noto Sans JP',sans-serif" font-size="11" font-weight="500">📋 ポリシー管理（GPO）</text>
+      <line x1="320" y1="138" x2="320" y2="150" stroke="#4f9cf9" stroke-width="1.2" marker-end="url(#arr)"/>
+    </svg>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>オブジェクト</th><th>説明</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td>ユーザーアカウント</td><td>人間が使うID。認証情報・属性情報を持つ</td><td><code>yamada@contoso.com</code></td></tr>
+        <tr><td>コンピューターアカウント</td><td>ドメイン参加したPC・サーバー</td><td><code>PC-YAMADA$</code></td></tr>
+        <tr><td>グループ</td><td>ユーザーをまとめ権限管理の単位とする</td><td><code>Sales_Group</code></td></tr>
+        <tr><td>OU（組織単位）</td><td>GPO適用・管理委任の入れ物</td><td><code>東京本社OU</code></td></tr>
+        <tr><td>GPO</td><td>ポリシーを一括強制するオブジェクト</td><td>パスワード最低長8文字</td></tr>
+        <tr><td>サービスアカウント</td><td>アプリ・サービスが使うID。人間は不使用</td><td><code>svc_sql</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ②構造階層 -->
+<section id="structure">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2>構造階層：ドメイン / ツリー / フォレスト</h2>
+  </div>
+
+  <!-- CSS Forest Diagram -->
+  <div class="forest-diagram">
+    <div class="fd-forest">
+      <div class="fd-forest-label">Forest（最上位の管理単位）</div>
+      <div class="fd-trees">
+        <!-- Tree A -->
+        <div class="fd-tree">
+          <div class="fd-tree-label">ツリーA — contoso.com</div>
+          <div class="fd-domains">
+            <div class="fd-domain">
+              <div class="fd-domain-dot root"></div>
+              <div class="fd-domain-name">contoso.com</div>
+              <div class="fd-domain-tag">フォレストルート</div>
+            </div>
+            <div class="fd-indent fd-domains">
+              <div class="fd-connector"></div>
+              <div class="fd-domain">
+                <div class="fd-domain-dot"></div>
+                <div class="fd-domain-name">jp.contoso.com</div>
+                <div class="fd-domain-tag">子ドメイン</div>
+              </div>
+              <div class="fd-indent fd-domains">
+                <div class="fd-connector"></div>
+                <div class="fd-domain" style="opacity:.8">
+                  <div class="fd-domain-dot" style="width:6px;height:6px;background:var(--text-dim)"></div>
+                  <div class="fd-domain-name" style="font-size:10px">tokyo.jp.contoso.com</div>
+                  <div class="fd-domain-tag">孫</div>
+                </div>
+              </div>
+              <div class="fd-domain">
+                <div class="fd-domain-dot"></div>
+                <div class="fd-domain-name">us.contoso.com</div>
+                <div class="fd-domain-tag">子ドメイン</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Tree B -->
+        <div class="fd-tree" style="border-color:rgba(124,106,247,.5)">
+          <div class="fd-tree-label" style="color:var(--accent2)">ツリーB — fabrikam.com</div>
+          <div class="fd-domains">
+            <div class="fd-domain" style="border-color:rgba(124,106,247,.3)">
+              <div class="fd-domain-dot" style="background:var(--accent2)"></div>
+              <div class="fd-domain-name">fabrikam.com</div>
+              <div class="fd-domain-tag">別DNS名前空間</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;padding:8px;background:rgba(247,183,49,.06);border-radius:6px;border:1px solid rgba(247,183,49,.2)">
+            <div style="font-size:10px;color:var(--accent4)">⟷ ツリールートトラスト（自動・双方向）</div>
+          </div>
+        </div>
+      </div>
+      <!-- Forest trust to external -->
+      <div class="fd-separate">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="flex:1;height:1px;background:linear-gradient(90deg,var(--accent4),transparent)"></div>
+          <div style="font-size:10px;color:var(--accent4);font-family:'JetBrains Mono',monospace;white-space:nowrap">フォレスト間トラスト（手動構成）</div>
+          <div style="flex:1;height:1px;background:linear-gradient(270deg,var(--accent4),transparent)"></div>
+        </div>
+        <div class="fd-tree" style="border-color:rgba(252,92,101,.35);border-style:dashed">
+          <div class="fd-tree-label" style="color:var(--accent5)">別フォレスト — legacy.local（例：買収先のAD）</div>
+          <div class="fd-domains">
+            <div class="fd-domain" style="border-color:rgba(252,92,101,.25)">
+              <div class="fd-domain-dot" style="background:var(--accent5)"></div>
+              <div class="fd-domain-name">legacy.local</div>
+              <div class="fd-domain-tag">スキーマが完全独立 ← 真のセキュリティ境界</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">🏠 ドメイン（Domain）</div>
+      <p>管理・認証・ポリシーの<span class="hl-green">基本単位。</span>DNSベースの名前（<code>contoso.com</code>）を持ち、DCがそのドメインのIDを管理する。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🌳 ツリー（Tree）</div>
+      <p>連続するDNS名前空間を持つドメインの集合。<span class="hl-blue">親子ドメイン間は自動で双方向トラスト</span>が張られる。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🌲 フォレスト（Forest）</div>
+      <p>ADの<span class="hl-purple">最上位管理単位。</span>スキーマを共有。<span class="hl-red">セキュリティ境界はフォレスト単位</span>（ドメインではない）。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">📂 OU（組織単位）</div>
+      <p>ドメイン内のオブジェクトを整理する<span class="hl-yellow">論理的な入れ物。</span>GPO適用・管理委任の主な単位。ドメインを超えない。</p>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div>
+      <div class="callout-title">よくある誤解：ドメインはセキュリティ境界ではない</div>
+      <p>同一フォレスト内ではDomain Adminsがフォレスト全体を掌握できる。隔離したいなら<span class="hl-yellow">別フォレスト</span>にする必要がある。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ③信頼関係 -->
+<section id="trust">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2>信頼関係（Trust）の仕組み</h2>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">🔗</span>
+    <div>
+      <div class="callout-title">信頼関係とは</div>
+      <p>「ドメインAのユーザーが、ドメインBのリソースにアクセスできるか？」を制御する仕組み。<span class="hl-blue">信頼する側（Trusting）のリソースに、信頼された側（Trusted）のユーザーがアクセスできる。</span></p>
+    </div>
+  </div>
+
+  <!-- Trust direction diagram -->
+  <div class="trust-diagram">
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">トラストの方向と意味</div>
+
+    <div class="trust-row">
+      <div class="trust-box a-domain">
+        <div class="tb-label">Trusted</div>
+        <div class="tb-name">Domain A</div>
+        <div class="tb-role" style="background:rgba(79,156,249,.15);color:var(--accent)">信頼される側</div>
+      </div>
+      <div class="trust-conn">
+        <div class="trust-line oneway"></div>
+        <div class="trust-meta">トラストの方向 →</div>
+      </div>
+      <div class="trust-box b-domain">
+        <div class="tb-label">Trusting</div>
+        <div class="tb-name">Domain B</div>
+        <div class="tb-role" style="background:rgba(62,207,142,.15);color:var(--accent3)">信頼する側</div>
+      </div>
+      <div style="flex:1;padding-left:16px;font-size:12px;color:var(--text-muted);min-width:120px">
+        Domain Bが Domain Aを「信頼」→<br>
+        <span style="color:var(--accent3)">Domain Aのユーザーは Domain Bのリソースにアクセス可能</span><br>
+        <span style="color:var(--text-dim);font-size:11px">※逆はできない（片方向）</span>
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--border);margin:4px 0"></div>
+
+    <div class="trust-row">
+      <div class="trust-box a-domain">
+        <div class="tb-label">Domain A</div>
+        <div class="tb-name">contoso.com</div>
+      </div>
+      <div class="trust-conn">
+        <div class="trust-line bidirectional"></div>
+        <div class="trust-meta">双方向トラスト</div>
+      </div>
+      <div class="trust-box b-domain">
+        <div class="tb-label">Domain B</div>
+        <div class="tb-name">jp.contoso.com</div>
+      </div>
+      <div style="flex:1;padding-left:16px;font-size:12px;color:var(--text-muted);min-width:120px">
+        親子ドメイン間は<span class="hl-green">自動で双方向</span>トラストが設定される
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--border);margin:4px 0"></div>
+
+    <!-- Transitive -->
+    <div style="padding:14px;background:rgba(124,106,247,.07);border-radius:8px;border:1px solid rgba(124,106,247,.2)">
+      <div style="font-size:12px;font-weight:500;color:var(--accent2);margin-bottom:10px">推移的トラスト（Transitive Trust）</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div class="trust-box a-domain" style="min-width:80px;padding:8px">
+          <div class="tb-name" style="font-size:11px">A</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+          <div style="font-size:18px;color:var(--accent3)">⟷</div>
+          <div style="font-size:9px;color:var(--text-dim)">信頼</div>
+        </div>
+        <div class="trust-box b-domain" style="min-width:80px;padding:8px">
+          <div class="tb-name" style="font-size:11px">B</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+          <div style="font-size:18px;color:var(--accent3)">⟷</div>
+          <div style="font-size:9px;color:var(--text-dim)">信頼</div>
+        </div>
+        <div class="trust-box c-domain" style="min-width:80px;padding:8px">
+          <div class="tb-name" style="font-size:11px">C</div>
+        </div>
+        <div style="font-size:18px;color:var(--accent2)">→</div>
+        <div style="padding:8px 14px;background:rgba(124,106,247,.1);border:1px solid rgba(124,106,247,.3);border-radius:6px;font-size:12px;color:var(--accent2)">
+          AはCも<br>自動的に信頼
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:8px">フォレスト内の全ドメインは推移的トラストで繋がるため、どのドメインのリソースにも横断アクセスが可能になる＝フォレストがセキュリティ境界である理由</div>
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>種別</th><th>方向</th><th>推移性</th><th>設定</th><th>主な用途</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>親子トラスト</td><td><span class="badge badge-green">双方向</span></td><td><span class="badge badge-blue">推移的</span></td><td><span class="badge badge-yellow">自動</span></td><td>同一ツリー内の親子ドメイン間。子ドメイン作成時に自動設定。</td></tr>
+        <tr><td>ツリールートトラスト</td><td><span class="badge badge-green">双方向</span></td><td><span class="badge badge-blue">推移的</span></td><td><span class="badge badge-yellow">自動</span></td><td>フォレスト内の異なるツリーのルートドメイン間。</td></tr>
+        <tr><td>フォレストトラスト</td><td><span class="badge badge-yellow">双方向/片方向</span></td><td><span class="badge badge-blue">推移的</span></td><td><span class="badge badge-red">手動</span></td><td>異なるフォレスト間。M&A・会社間連携。Selective Auth推奨。</td></tr>
+        <tr><td>外部トラスト</td><td><span class="badge badge-yellow">双方向/片方向</span></td><td><span class="badge badge-red">非推移的</span></td><td><span class="badge badge-red">手動</span></td><td>特定ドメインのみを繋ぐ。影響範囲が限定的。レガシー環境との接続。</td></tr>
+        <tr><td>ショートカットトラスト</td><td><span class="badge badge-yellow">双方向/片方向</span></td><td><span class="badge badge-blue">推移的</span></td><td><span class="badge badge-red">手動</span></td><td>大規模フォレストで認証パスを短縮するパフォーマンス最適化目的。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout danger">
+    <span class="callout-icon">🚨</span>
+    <div>
+      <div class="callout-title">セキュリティ観点：信頼関係は攻撃経路になる</div>
+      <ul>
+        <li>フォレストトラストがあると、一方が侵害されたときトラスト経由で横展開される可能性がある</li>
+        <li>SIDフィルタリング（SID Filtering）の設定状況を必ず確認する</li>
+        <li>フォレストトラスト設定時は Selective Authentication を有効化するのがベストプラクティス</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ④認証の仕組み -->
+<section id="auth">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2>認証の仕組み：Kerberos と NTLM</h2>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="sub-h green">Kerberosフロー（正常系）</div>
+      <div class="auth-flow">
+        <div class="af-step">
+          <div class="af-num" style="background:rgba(62,207,142,.15);color:var(--accent3);border:1px solid rgba(62,207,142,.3)">1</div>
+          <div class="af-body">
+            <div class="af-title">AS-REQ（認証要求）<span class="af-tag" style="background:rgba(79,156,249,.1);color:var(--accent)">Client → KDC</span></div>
+            <div class="af-desc">ユーザーがログイン。クライアントがKDC（DC上のKerberos認証サービス）にTGT発行を要求する。</div>
+          </div>
+        </div>
+        <div class="af-step">
+          <div class="af-num" style="background:rgba(62,207,142,.15);color:var(--accent3);border:1px solid rgba(62,207,142,.3)">2</div>
+          <div class="af-body">
+            <div class="af-title">AS-REP（TGT発行）<span class="af-tag" style="background:rgba(62,207,142,.1);color:var(--accent3)">KDC → Client</span></div>
+            <div class="af-desc">KDCがTGT（Ticket Granting Ticket）を発行。このチケットでリソースへのチケット要求が可能になる。</div>
+          </div>
+        </div>
+        <div class="af-step">
+          <div class="af-num" style="background:rgba(62,207,142,.15);color:var(--accent3);border:1px solid rgba(62,207,142,.3)">3</div>
+          <div class="af-body">
+            <div class="af-title">TGS-REQ（サービスチケット要求）<span class="af-tag" style="background:rgba(79,156,249,.1);color:var(--accent)">Client → KDC</span></div>
+            <div class="af-desc">TGTを使って特定リソース（ファイルサーバー等）へのサービスチケットをKDCに要求する。</div>
+          </div>
+        </div>
+        <div class="af-step">
+          <div class="af-num" style="background:rgba(62,207,142,.15);color:var(--accent3);border:1px solid rgba(62,207,142,.3)">4</div>
+          <div class="af-body">
+            <div class="af-title">TGS-REP（サービスチケット発行）<span class="af-tag" style="background:rgba(62,207,142,.1);color:var(--accent3)">KDC → Client</span></div>
+            <div class="af-desc">KDCがサービスチケット（ST）を発行する。</div>
+          </div>
+        </div>
+        <div class="af-step">
+          <div class="af-num" style="background:rgba(62,207,142,.15);color:var(--accent3);border:1px solid rgba(62,207,142,.3)">5</div>
+          <div class="af-body">
+            <div class="af-title">リソースアクセス<span class="af-tag" style="background:rgba(124,106,247,.1);color:var(--accent2)">Client → Server</span></div>
+            <div class="af-desc">STを提示してリソースにアクセス。パスワードはネットワークに流れない。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sub-h yellow">NTLMフロー（フォールバック）</div>
+      <div class="auth-flow">
+        <div class="af-step">
+          <div class="af-num" style="background:rgba(247,183,49,.12);color:var(--accent4);border:1px solid rgba(247,183,49,.3)">1</div>
+          <div class="af-body">
+            <div class="af-title">NEGOTIATE<span class="af-tag" style="background:rgba(79,156,249,.1);color:var(--accent)">Client → Server</span></div>
+            <div class="af-desc">クライアントがNTLM認証の開始を要求する。</div>
+          </div>
+        </div>
+        <div class="af-step">
+          <div class="af-num" style="background:rgba(247,183,49,.12);color:var(--accent4);border:1px solid rgba(247,183,49,.3)">2</div>
+          <div class="af-body">
+            <div class="af-title">CHALLENGE（乱数）<span class="af-tag" style="background:rgba(62,207,142,.1);color:var(--accent3)">Server → Client</span></div>
+            <div class="af-desc">サーバーがランダムな8バイトの値（Challenge）を送る。</div>
+          </div>
+        </div>
+        <div class="af-step">
+          <div class="af-num" style="background:rgba(247,183,49,.12);color:var(--accent4);border:1px solid rgba(247,183,49,.3)">3</div>
+          <div class="af-body">
+            <div class="af-title">AUTHENTICATE（ハッシュ応答）<span class="af-tag" style="background:rgba(79,156,249,.1);color:var(--accent)">Client → Server</span></div>
+            <div class="af-desc">クライアントがNTLMハッシュとChallengeを組み合わせたResponseを返す。</div>
+          </div>
+        </div>
+        <div class="af-step">
+          <div class="af-num" style="background:rgba(247,183,49,.12);color:var(--accent4);border:1px solid rgba(247,183,49,.3)">4</div>
+          <div class="af-body">
+            <div class="af-title">DC検証<span class="af-tag" style="background:rgba(124,106,247,.1);color:var(--accent2)">Server → DC</span></div>
+            <div class="af-desc">サーバーがDCにResponseを転送して検証させる。</div>
+          </div>
+        </div>
+      </div>
+      <div class="callout warn" style="margin-top:10px">
+        <span class="callout-icon">⚠️</span>
+        <div>
+          <div class="callout-title">NTLMのリスク</div>
+          <p>NTLMハッシュが盗まれると<span class="hl-yellow">Pass-the-Hash攻撃</span>が可能。Kerberosが使えない場合（IP直打ちアクセス等）のみ使われる。可能な限り制限・無効化を推奨。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ⑤コンポーネント -->
+<section id="components">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2>主要コンポーネント</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">🖥️ ドメインコントローラー（DC）</div>
+      <p style="margin-bottom:8px">ADデータベース（<code>ntds.dit</code>）を保持。<span class="hl-blue">認証・ディレクトリ検索・レプリケーションを担う。</span>通常2台以上で冗長化。</p>
+      <ul>
+        <li>Kerberos KDCの役割も兼務</li>
+        <li>FSMOロールを持つDCが存在する</li>
+        <li>拠点があればサイトごとに配置が望ましい</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">📚 グローバルカタログ（GC）</div>
+      <p style="margin-bottom:8px"><span class="hl-purple">フォレスト全体のオブジェクトの部分レプリカ</span>を持つDC。フォレスト横断の検索・ユニバーサルグループ解決に使われる。</p>
+      <ul>
+        <li>ポート：3268（GC）/ 3269（GC over SSL）</li>
+        <li>各サイトに1台以上のGCを配置するのが推奨</li>
+        <li>GCダウン＝ログイン遅延の原因になる</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- FSMO diagram -->
+  <div class="sub-h blue">FSMOロール（5つの単一マスタ操作）</div>
+  <div class="svg-wrap">
+    <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" style="min-width:320px">
+      <!-- Forest scope -->
+      <rect x="10" y="10" width="300" height="180" rx="10" fill="rgba(124,106,247,0.06)" stroke="#7c6af7" stroke-width="1.2" stroke-dasharray="4,3"/>
+      <text x="22" y="28" fill="#7c6af7" font-size="10" font-family="'JetBrains Mono',monospace">FOREST-WIDE (2)</text>
+      <rect x="24" y="40" width="270" height="42" rx="6" fill="rgba(124,106,247,0.1)" stroke="#7c6af7" stroke-width="1"/>
+      <text x="36" y="58" fill="#e6edf3" font-size="12" font-family="'Noto Sans JP',sans-serif" font-weight="500">Schema Master</text>
+      <text x="36" y="74" fill="#8b949e" font-size="10">ADスキーマ変更の唯一の書き込み先</text>
+      <rect x="24" y="90" width="270" height="42" rx="6" fill="rgba(124,106,247,0.1)" stroke="#7c6af7" stroke-width="1"/>
+      <text x="36" y="108" fill="#e6edf3" font-size="12" font-family="'Noto Sans JP',sans-serif" font-weight="500">Domain Naming Master</text>
+      <text x="36" y="124" fill="#8b949e" font-size="10">ドメインの追加・削除を制御</text>
+
+      <!-- Domain scope -->
+      <rect x="330" y="10" width="300" height="180" rx="10" fill="rgba(79,156,249,0.06)" stroke="#4f9cf9" stroke-width="1.2" stroke-dasharray="4,3"/>
+      <text x="342" y="28" fill="#4f9cf9" font-size="10" font-family="'JetBrains Mono',monospace">DOMAIN-WIDE (3)</text>
+      <rect x="344" y="40" width="272" height="36" rx="6" fill="rgba(79,156,249,0.1)" stroke="#4f9cf9" stroke-width="1"/>
+      <text x="356" y="55" fill="#e6edf3" font-size="12" font-family="'Noto Sans JP',sans-serif" font-weight="500">PDC Emulator</text>
+      <text x="356" y="70" fill="#8b949e" font-size="10">時刻同期・アカウントロックアウト処理・レガシー対応</text>
+      <rect x="344" y="84" width="272" height="36" rx="6" fill="rgba(79,156,249,0.1)" stroke="#4f9cf9" stroke-width="1"/>
+      <text x="356" y="99" fill="#e6edf3" font-size="12" font-family="'Noto Sans JP',sans-serif" font-weight="500">RID Master</text>
+      <text x="356" y="114" fill="#8b949e" font-size="10">セキュリティIDのユニーク性を保証（RIDプール管理）</text>
+      <rect x="344" y="128" width="272" height="36" rx="6" fill="rgba(79,156,249,0.1)" stroke="#4f9cf9" stroke-width="1"/>
+      <text x="356" y="143" fill="#e6edf3" font-size="12" font-family="'Noto Sans JP',sans-serif" font-weight="500">Infrastructure Master</text>
+      <text x="356" y="158" fill="#8b949e" font-size="10">ドメイン間オブジェクト参照の整合性を維持</text>
+    </svg>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>プロトコル / ポート</th><th>用途</th><th>注意点</th></tr></thead>
+      <tbody>
+        <tr><td>Kerberos（88/TCP,UDP）</td><td>主要認証プロトコル。チケットベース</td><td>ADではデフォルト。NTLMフォールバックに注意</td></tr>
+        <tr><td>LDAP（389/TCP）</td><td>ディレクトリ検索・オブジェクト操作</td><td>平文。LDAPS（636）または署名を強制すること</td></tr>
+        <tr><td>LDAPS（636/TCP）</td><td>LDAP over TLS</td><td>証明書が必要</td></tr>
+        <tr><td>DNS（53）</td><td>DCロケート・ADの根幹</td><td>AD統合DNSゾーンが一般的</td></tr>
+        <tr><td>SMB（445/TCP）</td><td>SYSVOL共有・GPO配布</td><td>DCとクライアント間で必須</td></tr>
+        <tr><td>GC（3268/3269）</td><td>グローバルカタログ検索</td><td>フォレスト横断の検索・UG解決に必須</td></tr>
+        <tr><td>RPC（135 + 動的）</td><td>レプリケーション・管理ツール</td><td>FW越えは動的ポートに注意</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ⑥ハイブリッドID -->
+<section id="hybrid">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2>ハイブリッドID：オンプレAD × Entra ID</h2>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">☁️</span>
+    <div>
+      <div class="callout-title">現代の顧客環境はほぼ「ハイブリッド」</div>
+      <p>オンプレADとMicrosoft Entra ID（旧Azure AD）を連携させた構成が主流。同期方式の違いがセキュリティ製品設計の前提になる。</p>
+    </div>
+  </div>
+
+  <!-- Hybrid diagram -->
+  <div class="hybrid-diagram">
+    <div class="hd-layer hd-onpre" style="max-width:100%">
+      <div class="hd-layer-title" style="color:var(--accent)">オンプレミス Active Directory</div>
+      <div class="hd-items">
+        <div class="hd-item">ユーザー / グループ</div>
+        <div class="hd-item">PC（ドメイン参加）</div>
+        <div class="hd-item">DC（ntds.dit）</div>
+        <div class="hd-item">GPO</div>
+        <div class="hd-item">Kerberos / NTLM</div>
+      </div>
+    </div>
+
+    <div class="hd-arrow">
+      <div class="hd-arrow-line"></div>
+      <div style="display:flex;gap:24px;align-items:center;padding:4px 12px;background:rgba(247,183,49,.07);border:1px solid rgba(247,183,49,.25);border-radius:6px">
+        <div style="text-align:center">
+          <div style="font-size:11px;color:var(--accent4);font-weight:500">Entra Connect Sync</div>
+          <div style="font-size:10px;color:var(--text-dim)">PHS / PTA / AD FS</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:11px;color:var(--accent4);font-weight:500">Cloud Sync</div>
+          <div style="font-size:10px;color:var(--text-dim)">軽量エージェント方式</div>
+        </div>
+      </div>
+      <div class="hd-arrow-line"></div>
+      <div class="hd-arrow-head">▼</div>
+    </div>
+
+    <div class="hd-layer hd-cloud" style="max-width:100%">
+      <div class="hd-layer-title" style="color:var(--accent2)">Microsoft Entra ID（クラウドID）</div>
+      <div class="hd-items">
+        <div class="hd-item">同期ユーザー</div>
+        <div class="hd-item">条件付きアクセス</div>
+        <div class="hd-item">MFA / SSPR</div>
+        <div class="hd-item">PIM</div>
+        <div class="hd-item">Entra Connect Health</div>
+      </div>
+    </div>
+
+    <div class="hd-arrow">
+      <div class="hd-arrow-line"></div>
+      <div class="hd-arrow-head">▼</div>
+    </div>
+
+    <div class="hd-layer hd-apps" style="max-width:100%">
+      <div class="hd-layer-title" style="color:var(--accent3)">クラウドサービス / アプリ</div>
+      <div class="hd-items">
+        <div class="hd-item">Microsoft 365</div>
+        <div class="hd-item">Teams / SharePoint</div>
+        <div class="hd-item">Azure リソース</div>
+        <div class="hd-item">SaaS（SAML/OIDC）</div>
+        <div class="hd-item">Defender XDR</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>同期方式</th><th>認証先</th><th>特徴</th></tr></thead>
+      <tbody>
+        <tr><td>PHS（パスワードハッシュ同期）</td><td>Entra ID</td><td>最もシンプル。オンプレDCダウン時もMFAでクラウド認証可。Leaked Credential検知が使える。推奨方式。</td></tr>
+        <tr><td>PTA（パススルー認証）</td><td>オンプレDC</td><td>パスワードハッシュをクラウドに送らない。ただしDC/PTAエージェントの可用性に依存。</td></tr>
+        <tr><td>AD FS（フェデレーション）</td><td>AD FS（オンプレ）</td><td>SAMLベース。フェデレーションサーバーが単障点になりうる。新規導入は非推奨。既存の廃止が推奨トレンド。</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ⑦セキュリティ -->
+<section id="security">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2>セキュリティ観点での整理</h2>
+  </div>
+
+  <!-- Attack path diagram -->
+  <div class="sub-h" style="color:var(--accent5)">典型的な攻撃パス（AD侵害の流れ）</div>
+  <div class="attack-path">
+    <div class="ap-step">
+      <div class="ap-icon">🎣</div>
+      <div class="ap-box"><strong>初期侵入</strong> — フィッシング・VPN脆弱性・公開サーバー侵害で一般ユーザーのセッション/認証情報を取得</div>
+      <div class="ap-tier ap-tier2">Tier 2</div>
+    </div>
+    <div style="padding-left:14px;color:var(--accent5);font-size:18px">↓</div>
+    <div class="ap-step">
+      <div class="ap-icon">🔄</div>
+      <div class="ap-box"><strong>横展開（Lateral Movement）</strong> — Pass-the-Hash / Pass-the-Ticket でネットワーク内を移動。Kerberoastingで特権アカウントのハッシュを取得</div>
+      <div class="ap-tier ap-tier1">Tier 1</div>
+    </div>
+    <div style="padding-left:14px;color:var(--accent5);font-size:18px">↓</div>
+    <div class="ap-step">
+      <div class="ap-icon">👑</div>
+      <div class="ap-box"><strong>特権昇格（Privilege Escalation）</strong> — Domain Admins / Enterprise Admins 相当の権限を奪取</div>
+      <div class="ap-tier ap-tier0">Tier 0</div>
+    </div>
+    <div style="padding-left:14px;color:var(--accent5);font-size:18px">↓</div>
+    <div class="ap-step">
+      <div class="ap-icon">💀</div>
+      <div class="ap-box"><strong>DCSync / Golden Ticket</strong> — krbtgtハッシュ取得。フォレスト全体の永続的掌握。ランサムウェア展開・データ窃取</div>
+      <div class="ap-tier ap-tier0">Tier 0</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">🎯 Tier 0 資産（最重要保護対象）</div>
+      <ul>
+        <li>すべてのドメインコントローラー</li>
+        <li>フォレストルートDCのすべて</li>
+        <li>Enterprise Admins / Schema Admins メンバー</li>
+        <li>Entra Connect（AD Connect）サーバー</li>
+        <li>AD FSサーバー（フェデレーション構成の場合）</li>
+        <li>krbtgtアカウント</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">⚡ 代表的な攻撃手法</div>
+      <ul>
+        <li><span class="hl-red">Pass-the-Hash</span>：NTLMハッシュを使った横展開</li>
+        <li><span class="hl-red">Pass-the-Ticket</span>：Kerberosチケットの再利用</li>
+        <li><span class="hl-red">Kerberoasting</span>：SPNを持つSAの平文パス解析</li>
+        <li><span class="hl-red">DCSync</span>：レプリケーション権限悪用でハッシュ全件取得</li>
+        <li><span class="hl-red">Golden Ticket</span>：krbtgtハッシュで偽チケット作成</li>
+        <li><span class="hl-red">AiTM</span>：フィッシング＋中間者でMFAバイパス</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ⑧ヒアリングチェックリスト -->
+<section id="hearing">
+  <div class="section-header">
+    <span class="section-num">08</span>
+    <h2>顧客ヒアリングチェックリスト</h2>
+  </div>
+  <div class="callout success">
+    <span class="callout-icon">✅</span>
+    <div>
+      <div class="callout-title">使い方</div>
+      <p>各項目をタップ/クリックで確認済みマーク。ヒアリング前の準備・実施中のチェックとして活用。</p>
+    </div>
+  </div>
+
+  <div class="sub-h blue">📐 基本構成</div>
+  <div class="checklist">
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">フォレストはいくつありますか？</div><div class="check-hint">M&A歴のある企業は複数フォレストの可能性が高い。1か複数かで信頼関係の複雑さが変わる。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">ドメインはいくつ、どんな名前ですか？（DNS名 / NetBIOS名）</div><div class="check-hint">子ドメイン・別ツリーの有無を確認。構成図があれば共有してもらう。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">DCは何台、どこに置いてありますか？（拠点・クラウド）</div><div class="check-hint">クラウドDC（Azure上）かオンプレのみか。拠点が多い場合はサイト設計も確認。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">ADのユーザー数（オブジェクト数）はだいたい何件ですか？</div><div class="check-hint">ライセンス見積もり・エージェント展開計画・SIEMインジェスト量の前提になる。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">Windowsサーバー / クライアントのバージョン構成は？</div><div class="check-hint">Win Server 2008以前はKerberos armoring不対応など制約が多い。</div></div></div>
+  </div>
+
+  <div class="sub-h purple" style="margin-top:16px">🔗 信頼関係・連携</div>
+  <div class="checklist">
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">フォレスト間・ドメイン間の信頼関係はありますか？</div><div class="check-hint">どの方向のトラストか。双方向か片方向か。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">フォレストトラストがある場合、Selective Authenticationは有効ですか？</div><div class="check-hint">無効だとトラスト先の全ユーザーがデフォルトでリソースアクセス可能になる。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">Entra ID（旧Azure AD）と連携していますか？</div><div class="check-hint">Entra Connect / Cloud Sync / AD FSのどれか。またはEntraなしのオンプレのみか。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">Entra Connect使用の場合、同期方式は？（PHS / PTA / AD FS）</div><div class="check-hint">PHSが最もシンプルでMFAバイパス攻撃への耐性が高い。PTAはDC依存。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">外部パートナーとのADトラストはありますか？</div><div class="check-hint">B2B連携。パートナー側の侵害が自社に影響しうるか確認。</div></div></div>
+  </div>
+
+  <div class="sub-h green" style="margin-top:16px">🛡️ セキュリティ・権限管理</div>
+  <div class="checklist">
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">Domain Admins / Enterprise Admins のメンバー数と管理方法は？</div><div class="check-hint">多すぎる場合は特権管理の問題あり。PIM（Privileged Identity Management）の有無も確認。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">ADの監査ログをどこに保管・監視していますか？</div><div class="check-hint">SIEMに転送しているか（Sentinel等）。何日保管か。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">Defender for Identity（旧Azure ATP）は導入していますか？</div><div class="check-hint">DCへのセンサー展開が前提。どのDCに入れているか。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">NTLMを無効化・制限していますか？</div><div class="check-hint">完全無効は困難だが制限の有無を確認。Pass-the-Hash対策の基本。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">LDAP署名・LDAPS（LDAP over TLS）を強制していますか？</div><div class="check-hint">LDAP平文はMitM攻撃リスクあり。2020年3月MSパッチ以降は要対応。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">Entra Connect サーバーのセキュリティ管理状況は？</div><div class="check-hint">Tier 0扱いが必要。オンプレとEntra両方への書き込み権限を持つ。</div></div></div>
+  </div>
+
+  <div class="sub-h yellow" style="margin-top:16px">🏢 組織・運用体制</div>
+  <div class="checklist">
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">ADの運用はIT部門の何名が担当していますか？</div><div class="check-hint">小規模チームは自動化・アラート対応の余力が少ない。MSSP検討の材料にもなる。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">M&A・組織変更の予定はありますか？</div><div class="check-hint">フォレスト統合・分離・新ドメイン追加が近く起きる可能性を確認。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">Entra ID（クラウドID）への段階的移行計画はありますか？</div><div class="check-hint">Entra参加デバイスへの移行・AD FS廃止・パスワードレス推進など。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">以前にAD関連のセキュリティインシデントはありましたか？</div><div class="check-hint">過去の侵害経験は現状の課題認識と優先度を把握する上で重要。</div></div></div>
+    <div class="check-item" onclick="toggle(this)"><div class="check-box">✓</div><div><div class="check-q">ADアカウントの棚卸し（退職者アカウント整理）はいつ実施しましたか？</div><div class="check-hint">退職者アカウントが残存しているケースは非常に多い。基本的な課題の有無がわかる。</div></div></div>
+  </div>
+</section>
+
+<!-- ⑨構成パターン -->
+<section id="patterns">
+  <div class="section-header">
+    <span class="section-num">09</span>
+    <h2>よくある顧客構成パターン</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="pattern-box">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span class="badge badge-green">パターン A</span>
+        <span style="font-size:13px;font-weight:500">シングルドメイン・シングルフォレスト</span>
+      </div>
+      <svg viewBox="0 0 280 130" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+        <rect x="10" y="8" width="260" height="115" rx="8" fill="rgba(62,207,142,0.06)" stroke="#3ecf8e" stroke-width="1.2"/>
+        <text x="20" y="24" fill="#3ecf8e" font-size="9" font-family="'JetBrains Mono',monospace">Forest: contoso.com</text>
+        <rect x="20" y="30" width="240" height="82" rx="6" fill="rgba(79,156,249,0.08)" stroke="#4f9cf9" stroke-width="1"/>
+        <text x="30" y="46" fill="#4f9cf9" font-size="10" font-family="'JetBrains Mono',monospace">contoso.com (唯一のドメイン)</text>
+        <!-- DCs -->
+        <rect x="30" y="54" width="60" height="24" rx="4" fill="rgba(79,156,249,0.12)" stroke="#4f9cf9" stroke-width="1"/>
+        <text x="60" y="65" text-anchor="middle" fill="#e6edf3" font-size="9">DC-01</text>
+        <text x="60" y="74" text-anchor="middle" fill="#8b949e" font-size="8">東京本社</text>
+        <rect x="100" y="54" width="60" height="24" rx="4" fill="rgba(79,156,249,0.12)" stroke="#4f9cf9" stroke-width="1"/>
+        <text x="130" y="65" text-anchor="middle" fill="#e6edf3" font-size="9">DC-02</text>
+        <text x="130" y="74" text-anchor="middle" fill="#8b949e" font-size="8">冗長DC</text>
+        <!-- OUs -->
+        <rect x="180" y="54" width="70" height="24" rx="4" fill="rgba(62,207,142,0.08)" stroke="#3ecf8e" stroke-width="0.8" stroke-dasharray="3,2"/>
+        <text x="215" y="65" text-anchor="middle" fill="#3ecf8e" font-size="9">OU: 営業部</text>
+        <text x="215" y="74" text-anchor="middle" fill="#8b949e" font-size="8">GPO適用単位</text>
+        <!-- Entra Connect -->
+        <line x1="140" y1="94" x2="140" y2="106" stroke="#f7b731" stroke-width="1" stroke-dasharray="3,2"/>
+        <text x="140" y="116" text-anchor="middle" fill="#f7b731" font-size="8" font-family="'JetBrains Mono',monospace">Entra Connect (PHS) → M365</text>
+      </svg>
+      <p style="font-size:12px;color:var(--text-muted)">SMB〜中堅企業に最多。DC2台冗長化 + Entra Connect でM365連携するパターンが主流。</p>
+    </div>
+
+    <div class="pattern-box">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span class="badge badge-blue">パターン B</span>
+        <span style="font-size:13px;font-weight:500">親子ドメイン・単一フォレスト</span>
+      </div>
+      <svg viewBox="0 0 280 130" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+        <rect x="10" y="8" width="260" height="115" rx="8" fill="rgba(124,106,247,0.06)" stroke="#7c6af7" stroke-width="1.2"/>
+        <text x="20" y="24" fill="#7c6af7" font-size="9" font-family="'JetBrains Mono',monospace">Forest: contoso.com</text>
+        <!-- root domain -->
+        <rect x="90" y="28" width="100" height="22" rx="4" fill="rgba(247,183,49,0.1)" stroke="#f7b731" stroke-width="1"/>
+        <text x="140" y="43" text-anchor="middle" fill="#f7b731" font-size="10" font-family="'JetBrains Mono',monospace">contoso.com</text>
+        <!-- lines -->
+        <line x1="100" y1="50" x2="60" y2="68" stroke="#4f9cf9" stroke-width="1"/>
+        <line x1="140" y1="50" x2="140" y2="68" stroke="#4f9cf9" stroke-width="1"/>
+        <line x1="180" y1="50" x2="220" y2="68" stroke="#4f9cf9" stroke-width="1"/>
+        <!-- child domains -->
+        <rect x="20" y="68" width="80" height="22" rx="4" fill="rgba(79,156,249,0.1)" stroke="#4f9cf9" stroke-width="1"/>
+        <text x="60" y="83" text-anchor="middle" fill="#4f9cf9" font-size="9" font-family="'JetBrains Mono',monospace">jp.contoso.com</text>
+        <rect x="100" y="68" width="80" height="22" rx="4" fill="rgba(79,156,249,0.1)" stroke="#4f9cf9" stroke-width="1"/>
+        <text x="140" y="83" text-anchor="middle" fill="#4f9cf9" font-size="9" font-family="'JetBrains Mono',monospace">us.contoso.com</text>
+        <rect x="180" y="68" width="80" height="22" rx="4" fill="rgba(79,156,249,0.1)" stroke="#4f9cf9" stroke-width="1"/>
+        <text x="220" y="83" text-anchor="middle" fill="#4f9cf9" font-size="9" font-family="'JetBrains Mono',monospace">eu.contoso.com</text>
+        <!-- trust label -->
+        <text x="140" y="106" text-anchor="middle" fill="#3ecf8e" font-size="9">⟷ 自動・双方向・推移的トラスト</text>
+      </svg>
+      <p style="font-size:12px;color:var(--text-muted)">地域・法人ごとに管理を分けたい大企業。Domain Admins権限がフォレスト全域に及ぶことを意識する。</p>
+    </div>
+
+    <div class="pattern-box">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span class="badge badge-yellow">パターン C</span>
+        <span style="font-size:13px;font-weight:500">M&A後・複数フォレスト（統合前）</span>
+      </div>
+      <svg viewBox="0 0 280 130" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+        <!-- Forest A -->
+        <rect x="10" y="8" width="118" height="70" rx="7" fill="rgba(79,156,249,0.07)" stroke="#4f9cf9" stroke-width="1.2"/>
+        <text x="18" y="22" fill="#4f9cf9" font-size="9" font-family="'JetBrains Mono',monospace">Forest A</text>
+        <rect x="20" y="28" width="98" height="40" rx="5" fill="rgba(79,156,249,0.1)" stroke="#4f9cf9" stroke-width="1"/>
+        <text x="69" y="44" text-anchor="middle" fill="#e6edf3" font-size="10" font-family="'JetBrains Mono',monospace">contoso.com</text>
+        <text x="69" y="58" text-anchor="middle" fill="#8b949e" font-size="8">本社フォレスト</text>
+        <!-- Forest B -->
+        <rect x="152" y="8" width="118" height="70" rx="7" fill="rgba(252,92,101,0.06)" stroke="#fc5c65" stroke-width="1.2" stroke-dasharray="4,3"/>
+        <text x="160" y="22" fill="#fc5c65" font-size="9" font-family="'JetBrains Mono',monospace">Forest B（買収先）</text>
+        <rect x="162" y="28" width="98" height="40" rx="5" fill="rgba(252,92,101,0.08)" stroke="#fc5c65" stroke-width="1"/>
+        <text x="211" y="44" text-anchor="middle" fill="#e6edf3" font-size="10" font-family="'JetBrains Mono',monospace">fabrikam.com</text>
+        <text x="211" y="58" text-anchor="middle" fill="#8b949e" font-size="8">買収先のAD</text>
+        <!-- trust arrow -->
+        <line x1="128" y1="44" x2="152" y2="44" stroke="#f7b731" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <text x="140" y="40" text-anchor="middle" fill="#f7b731" font-size="8">⟷</text>
+        <text x="140" y="56" text-anchor="middle" fill="#f7b731" font-size="8" font-family="'JetBrains Mono',monospace">Forest Trust</text>
+        <!-- note -->
+        <rect x="10" y="86" width="260" height="34" rx="5" fill="rgba(247,183,49,0.06)" stroke="rgba(247,183,49,0.25)" stroke-width="1"/>
+        <text x="140" y="100" text-anchor="middle" fill="#f7b731" font-size="9">⚠ Selective Authentication を有効化すること</text>
+        <text x="140" y="114" text-anchor="middle" fill="#8b949e" font-size="8">トラスト越えの横展開リスクあり。SIDフィルタリング確認必須。</text>
+      </svg>
+      <p style="font-size:12px;color:var(--text-muted)">M&A直後に多い。フォレストが分離しているためセキュリティ境界は守られるが、連携にフォレストトラスト設定が必要。</p>
+    </div>
+
+    <div class="pattern-box">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span class="badge badge-purple">パターン D</span>
+        <span style="font-size:13px;font-weight:500">ハイブリッドID（現在の主流）</span>
+      </div>
+      <svg viewBox="0 0 280 130" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+        <!-- Onprem -->
+        <rect x="10" y="8" width="118" height="55" rx="6" fill="rgba(79,156,249,0.08)" stroke="#4f9cf9" stroke-width="1.2"/>
+        <text x="18" y="22" fill="#4f9cf9" font-size="9" font-family="'JetBrains Mono',monospace">On-Premises AD</text>
+        <text x="69" y="40" text-anchor="middle" fill="#e6edf3" font-size="10">contoso.com</text>
+        <text x="69" y="54" text-anchor="middle" fill="#8b949e" font-size="8">DC × 2, LDAP, Kerberos</text>
+        <!-- Entra ID -->
+        <rect x="152" y="8" width="118" height="55" rx="6" fill="rgba(124,106,247,0.08)" stroke="#7c6af7" stroke-width="1.2"/>
+        <text x="160" y="22" fill="#7c6af7" font-size="9" font-family="'JetBrains Mono',monospace">Entra ID ☁️</text>
+        <text x="211" y="38" text-anchor="middle" fill="#e6edf3" font-size="10">条件付きアクセス</text>
+        <text x="211" y="52" text-anchor="middle" fill="#8b949e" font-size="8">MFA / PIM / SSPR</text>
+        <!-- sync arrow -->
+        <line x1="128" y1="35" x2="152" y2="35" stroke="#f7b731" stroke-width="1.5"/>
+        <text x="140" y="32" text-anchor="middle" fill="#f7b731" font-size="8">→</text>
+        <text x="140" y="48" text-anchor="middle" fill="#f7b731" font-size="8" font-family="'JetBrains Mono',monospace">PHS Sync</text>
+        <!-- clients -->
+        <rect x="10" y="72" width="55" height="30" rx="5" fill="rgba(62,207,142,0.08)" stroke="#3ecf8e" stroke-width="0.8"/>
+        <text x="37" y="85" text-anchor="middle" fill="#3ecf8e" font-size="9">Hybrid Join</text>
+        <text x="37" y="96" text-anchor="middle" fill="#8b949e" font-size="7">Windows PC</text>
+        <rect x="73" y="72" width="55" height="30" rx="5" fill="rgba(62,207,142,0.08)" stroke="#3ecf8e" stroke-width="0.8"/>
+        <text x="100" y="85" text-anchor="middle" fill="#3ecf8e" font-size="9">Entra Join</text>
+        <text x="100" y="96" text-anchor="middle" fill="#8b949e" font-size="7">新規PC</text>
+        <!-- apps -->
+        <rect x="152" y="72" width="118" height="30" rx="5" fill="rgba(62,207,142,0.08)" stroke="#3ecf8e" stroke-width="0.8"/>
+        <text x="211" y="84" text-anchor="middle" fill="#3ecf8e" font-size="9">M365 / Teams / Azure</text>
+        <text x="211" y="96" text-anchor="middle" fill="#8b949e" font-size="7">SaaS / Defender XDR</text>
+        <!-- lines -->
+        <line x1="37" y1="72" x2="69" y2="63" stroke="rgba(79,156,249,0.4)" stroke-width="0.8"/>
+        <line x1="100" y1="72" x2="100" y2="63" stroke="rgba(79,156,249,0.4)" stroke-width="0.8"/>
+        <line x1="211" y1="72" x2="211" y2="63" stroke="rgba(124,106,247,0.4)" stroke-width="0.8"/>
+      </svg>
+      <p style="font-size:12px;color:var(--text-muted)">多くの日本企業が該当。PHS + 条件付きアクセスが現在のベストプラクティス。段階的にクラウドIDへ移行中。</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+function toggle(el){el.classList.toggle('checked')}
+</script>
+</body>
+</html>
