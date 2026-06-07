@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AD FS / SAML / フェデレーション SSO 完全攻略</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #f5f3ee;
+  --surface:   #ffffff;
+  --card:      #fdfcfa;
+  --border:    #e2ddd4;
+  --navy:      #1a2540;
+  --blue:      #2563eb;
+  --amber:     #d97706;
+  --green:     #059669;
+  --red:       #dc2626;
+  --purple:    #7c3aed;
+  --teal:      #0891b2;
+  --text:      #1e1b16;
+  --muted:     #78716c;
+  --light:     #f0ede6;
+  --mono:      'JetBrains Mono', monospace;
+  --sans:      'Noto Sans JP', sans-serif;
+  --head:      'Sora', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14.5px;
+  line-height: 1.75;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--navy);
+  color: #fff;
+  padding: 52px 24px 44px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 50%, rgba(37,99,235,.25) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(124,58,237,.2) 0%, transparent 60%);
+}
+.header-inner { position: relative; max-width: 760px; margin: 0 auto; }
+.header-tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .14em;
+  color: #93c5fd;
+  border: 1px solid rgba(147,197,253,.4);
+  border-radius: 3px;
+  padding: 3px 10px;
+  margin-bottom: 18px;
+  text-transform: uppercase;
+}
+header h1 {
+  font-family: var(--head);
+  font-size: clamp(20px, 4vw, 34px);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -.02em;
+}
+header h1 em { font-style: normal; color: #fbbf24; }
+header p {
+  margin-top: 12px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* ── TABS ── */
+.tab-nav {
+  display: flex;
+  overflow-x: auto;
+  background: var(--navy);
+  border-bottom: 2px solid #2d3a56;
+  scrollbar-width: none;
+  gap: 2px;
+  padding: 0 16px;
+}
+.tab-nav::-webkit-scrollbar { display: none; }
+.tab-btn {
+  flex-shrink: 0;
+  padding: 13px 20px;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #94a3b8;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .2s, border-color .2s;
+  margin-bottom: -2px;
+}
+.tab-btn:hover { color: #e2e8f0; }
+.tab-btn.active { color: #fbbf24; border-bottom-color: #fbbf24; font-weight: 700; }
+
+/* ── CONTENT ── */
+.tab-pane { display: none; animation: fadeUp .3s ease; }
+.tab-pane.active { display: block; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.container { max-width: 900px; margin: 0 auto; padding: 40px 24px 60px; }
+
+/* ── SECTION ── */
+.section { margin-bottom: 48px; }
+.section-title {
+  font-family: var(--head);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-title .icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.icon-blue   { background: #dbeafe; }
+.icon-amber  { background: #fef3c7; }
+.icon-green  { background: #d1fae5; }
+.icon-red    { background: #fee2e2; }
+.icon-purple { background: #ede9fe; }
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+.card-title {
+  font-family: var(--head);
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  padding: 2px 7px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+.tag-blue   { background: #dbeafe; color: #1d4ed8; }
+.tag-amber  { background: #fef3c7; color: #92400e; }
+.tag-green  { background: #d1fae5; color: #065f46; }
+.tag-purple { background: #ede9fe; color: #5b21b6; }
+.tag-red    { background: #fee2e2; color: #991b1b; }
+.tag-teal   { background: #cffafe; color: #155e75; }
+.tag-navy   { background: #dde4f0; color: #1a2540; }
+
+.card p { color: #44403c; font-size: 13.5px; }
+
+/* ── ANALOGY BOX ── */
+.analogy {
+  background: linear-gradient(135deg, #fef9f0, #fff8e8);
+  border: 1px solid #fde68a;
+  border-left: 4px solid var(--amber);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 12px 0;
+  font-size: 13.5px;
+}
+.analogy strong { color: var(--amber); display: block; margin-bottom: 4px; font-size: 13px; }
+
+/* ── FLOW DIAGRAM (pure CSS) ── */
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 16px 0;
+}
+.flow-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.flow-box {
+  flex: 1;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 500;
+  position: relative;
+}
+.flow-box.navy-box  { border-color: var(--navy);   background: #f0f3fa; }
+.flow-box.blue-box  { border-color: var(--blue);   background: #eff6ff; }
+.flow-box.amber-box { border-color: var(--amber);  background: #fffbeb; }
+.flow-box.green-box { border-color: var(--green);  background: #f0fdf4; }
+.flow-box.purple-box { border-color: var(--purple); background: #faf5ff; }
+
+.flow-box .box-label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.flow-arrow-h {
+  font-size: 18px;
+  color: var(--muted);
+  padding: 0 8px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.flow-arrow-v {
+  text-align: center;
+  color: var(--muted);
+  font-size: 18px;
+  padding: 4px 0;
+  line-height: 1;
+}
+.flow-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  padding: 2px 8px;
+  font-family: var(--mono);
+}
+
+/* ── STEP LIST ── */
+.steps { display: flex; flex-direction: column; gap: 0; }
+.step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  position: relative;
+}
+.step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 17px; top: 38px;
+  width: 2px;
+  height: calc(100% + 4px);
+  background: var(--border);
+}
+.step-num {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  z-index: 1;
+}
+.step-body { padding: 6px 0 24px; flex: 1; }
+.step-body strong { display: block; font-size: 14px; margin-bottom: 4px; color: var(--navy); }
+.step-body p { color: #57534e; font-size: 13px; }
+
+/* ── COMPARE TABLE ── */
+.compare { overflow-x: auto; margin-bottom: 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead tr { background: var(--navy); }
+th {
+  color: #fff; padding: 10px 14px; text-align: left;
+  font-family: var(--mono); font-size: 11px; letter-spacing: .07em;
+  font-weight: 600; text-transform: uppercase; white-space: nowrap;
+}
+td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:hover td { background: var(--light); }
+.ok  { color: var(--green); font-weight: 700; }
+.ng  { color: var(--red); }
+.na  { color: var(--muted); }
+code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  background: var(--light);
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: #7c3aed;
+}
+
+/* ── ANSWER CARDS ── */
+.answer-grid { display: flex; flex-direction: column; gap: 14px; }
+.answer-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+}
+.answer-header {
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+.answer-header:hover { background: var(--light); }
+.verdict {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+.v-correct { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+.v-wrong   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.arrow-icon { margin-left: auto; font-size: 12px; color: var(--muted); transition: transform .2s; }
+.answer-header.open .arrow-icon { transform: rotate(180deg); }
+.answer-body { padding: 0 18px 16px; font-size: 13px; color: #57534e; display: none; }
+.answer-body.open { display: block; border-top: 1px solid var(--border); padding-top: 14px; }
+
+/* ── TIP GRID ── */
+.tip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+.tip-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  border-top: 3px solid var(--navy);
+}
+.tip-card h4 { font-size: 13.5px; font-weight: 700; margin-bottom: 8px; color: var(--navy); }
+.tip-card p  { font-size: 12.5px; color: var(--muted); line-height: 1.65; }
+
+/* ── KEYWORD PILL ── */
+.pill {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--light);
+  border: 1px solid var(--border);
+  padding: 2px 9px;
+  border-radius: 20px;
+  margin: 2px 3px;
+  color: var(--navy);
+}
+
+/* ── INFO BOX ── */
+.info-box {
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-size: 13px;
+  margin: 12px 0;
+}
+.info-box.blue   { background: #eff6ff; border: 1px solid #bfdbfe; }
+.info-box.amber  { background: #fffbeb; border: 1px solid #fde68a; }
+.info-box.green  { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.info-box.red    { background: #fff1f2; border: 1px solid #fecdd3; }
+.info-box strong { display: block; margin-bottom: 5px; font-size: 13px; }
+.info-box.blue   strong { color: #1d4ed8; }
+.info-box.amber  strong { color: #92400e; }
+.info-box.green  strong { color: #065f46; }
+.info-box.red    strong { color: #991b1b; }
+
+/* ── SCENARIO BOX ── */
+.scenario {
+  background: #1a2540;
+  color: #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  font-size: 13.5px;
+  line-height: 1.8;
+  margin-bottom: 20px;
+}
+.scenario h3 {
+  font-family: var(--head);
+  font-size: 14px;
+  color: #fbbf24;
+  margin-bottom: 14px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.scenario ul { list-style: none; }
+.scenario ul li {
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  display: flex; gap: 10px;
+}
+.scenario ul li:last-child { border-bottom: none; }
+.scenario ul li::before { content: '▸'; color: #60a5fa; flex-shrink: 0; }
+.problem-text {
+  background: rgba(251,191,36,.1);
+  border: 1px solid rgba(251,191,36,.3);
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: #fde68a;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+/* ── METADATA TABLE ── */
+.meta-box {
+  background: #1e293b;
+  border-radius: 10px;
+  padding: 20px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 12px 0;
+}
+.meta-box .key   { color: #7dd3fc; }
+.meta-box .val   { color: #86efac; }
+.meta-box .cmt   { color: #64748b; }
+.meta-row { display: flex; gap: 12px; padding: 4px 0; border-bottom: 1px solid #1e3a5a; }
+.meta-row:last-child { border-bottom: none; }
+
+/* ── FOOTER ── */
+footer {
+  background: var(--navy);
+  color: #64748b;
+  text-align: center;
+  padding: 20px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-tag">SC-300 / AZ-500 / MS-102 対応</div>
+    <h1>AD FS・SAML・フェデレーション<br><em>ゼロから完全攻略</em></h1>
+    <p>「そもそも何？」から試験正答まで一気通貫で理解する</p>
+  </div>
+</header>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('basics')">① そもそも論</button>
+  <button class="tab-btn" onclick="switchTab('adfs')">② AD FSとは</button>
+  <button class="tab-btn" onclick="switchTab('saml')">③ SAMLとは</button>
+  <button class="tab-btn" onclick="switchTab('flow')">④ 認証フロー</button>
+  <button class="tab-btn" onclick="switchTab('config')">⑤ 設定要素</button>
+  <button class="tab-btn" onclick="switchTab('exam')">⑥ 問題解説</button>
+  <button class="tab-btn" onclick="switchTab('tips')">⑦ 試験対策</button>
+</nav>
+
+<!-- ════════════════════════════ TAB 1: そもそも論 ════════════════════════════ -->
+<div class="tab-pane active" id="tab-basics">
+<div class="container">
+
+  <div class="section">
+    <div class="section-title"><span class="icon icon-amber">🤔</span>SSOとは何か</div>
+
+    <div class="card">
+      <div class="card-title"><span class="tag tag-amber">SSO</span> シングルサインオン（Single Sign-On）</div>
+      <p>一度ログインするだけで、複数のサービスを追加認証なしで使えるようにする仕組み。<br>
+      ユーザーが「会社のPCにログイン済み」→「給与計算SaaS、Slack、Salesforceも自動でログイン」という状態。</p>
+      <div class="analogy">
+        <strong>🎡 わかりやすいたとえ話</strong>
+        遊園地の「1日フリーパス」。入場口で一度だけリストバンドをもらえば、園内のどのアトラクションも都度チケットを買わずに乗れる。
+        SSOの「認証トークン」= フリーパスのリストバンド。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="tag tag-blue">問題設定</span> なぜSSOが必要か</div>
+      <p style="margin-bottom:12px">SSO がない場合（= 今回の問題の初期状態）：</p>
+      <div class="flow">
+        <div class="flow-row">
+          <div class="flow-box navy-box"><span class="box-label">社員</span>AD に Windows ログイン済み</div>
+          <div class="flow-arrow-h">→</div>
+          <div class="flow-box amber-box"><span class="box-label">クラウド給与SaaS</span>「パスワードを入力してください」😩</div>
+        </div>
+      </div>
+      <div class="info-box red" style="margin-top:14px">
+        <strong>😤 課題</strong>
+        サービスごとにID/パスワードが必要 → 利便性低下 + パスワード使い回しリスク + ヘルプデスクコスト増
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="icon icon-blue">🏢</span>登場人物の関係を整理する</div>
+
+    <div class="card">
+      <div class="card-title">この問題に出てくる3つの要素</div>
+      <div class="compare">
+        <table>
+          <thead><tr><th>要素</th><th>何者か</th><th>役割</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="tag tag-navy">Active Directory (AD)</span></td>
+              <td>オンプレミスの社内ディレクトリ</td>
+              <td>社員の IDとパスワードを管理するデータベース</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-blue">AD FS</span></td>
+              <td>オンプレミスの認証サーバー</td>
+              <td>AD の認証情報をもとにクラウドへのSSO を仲介する</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-purple">Entra Connect</span></td>
+              <td>同期ツール（旧Azure AD Connect）</td>
+              <td>AD のユーザー情報を Entra ID（クラウド）へコピーし続ける</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="analogy">
+        <strong>🏨 全体のたとえ</strong>
+        AD = ホテルの「宿泊者名簿（全員のデータがある）」<br>
+        AD FS = ホテルのフロント（「あなたは確かに宿泊者ですよ」と証明書を発行）<br>
+        Entra Connect = 名簿を本社にもFAXして最新状態を保つ係
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ════════════════════════════ TAB 2: AD FS ════════════════════════════ -->
+<div class="tab-pane" id="tab-adfs">
+<div class="container">
+
+  <div class="section">
+    <div class="section-title"><span class="icon icon-blue">🖥️</span>AD FS とは</div>
+
+    <div class="card">
+      <div class="card-title"><span class="tag tag-blue">AD FS</span> Active Directory Federation Services</div>
+      <p>オンプレミスに置く<strong>フェデレーション認証サーバー</strong>。<br>
+      AD に保存されているユーザー情報をもとに、<strong>信頼した外部サービスへのSSOを可能にするトークン発行機関</strong>。</p>
+      <div class="analogy">
+        <strong>🔏 AD FS のイメージ</strong>
+        銀行が発行する「本人確認済み証明書」を思い浮かべてほしい。<br>
+        銀行（= AD FS）が「この人は確かに口座保有者です（本人確認済み）」という証明書（= SAMLトークン）を発行。<br>
+        提携店（= 給与計算SaaS）はその証明書を見て「銀行が保証するなら信頼する」と判断してログインを通す。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">AD FS の核心：IdP（Identity Provider）という役割</div>
+      <div class="compare">
+        <table>
+          <thead><tr><th>役割名</th><th>略称</th><th>説明</th><th>今回の問題では</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Identity Provider</td>
+              <td><span class="tag tag-blue">IdP</span></td>
+              <td>「このユーザーは誰か」を証明するサービス</td>
+              <td class="ok">AD FS（社内サーバー）</td>
+            </tr>
+            <tr>
+              <td>Service Provider</td>
+              <td><span class="tag tag-amber">SP</span></td>
+              <td>IdPの証明を信頼してサービスを提供する側</td>
+              <td class="ok">給与計算クラウドSaaS</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-box blue">
+        <strong>💡 ポイント</strong>
+        AD FS は IdP として「トークン（証明書）」を発行する。給与計算SaaSはSPとしてそのトークンを受け取りログインを許可する。この「信頼関係の設定」が今回の問題の核心。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">AD FS と Entra ID（旧Azure AD）はどう違う？</div>
+      <div class="compare">
+        <table>
+          <thead><tr><th>比較項目</th><th>AD FS</th><th>Entra ID（Azure AD）</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>設置場所</td>
+              <td>オンプレミス（自社サーバー）</td>
+              <td>Microsoft クラウド</td>
+            </tr>
+            <tr>
+              <td>管理コスト</td>
+              <td>高い（自社で運用・保守）</td>
+              <td>低い（Microsoftが管理）</td>
+            </tr>
+            <tr>
+              <td>認証プロトコル</td>
+              <td>主に SAML / WS-Federation</td>
+              <td>SAML / OIDC / OAuth 2.0</td>
+            </tr>
+            <tr>
+              <td>今回の問題での位置</td>
+              <td class="ok">メインの IdP（認証基盤）</td>
+              <td>Entra Connect で同期先として使用</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ════════════════════════════ TAB 3: SAML ════════════════════════════ -->
+<div class="tab-pane" id="tab-saml">
+<div class="container">
+
+  <div class="section">
+    <div class="section-title"><span class="icon icon-purple">📄</span>SAML とは</div>
+
+    <div class="card">
+      <div class="card-title"><span class="tag tag-purple">SAML</span> Security Assertion Markup Language</div>
+      <p>IdP（AD FS）と SP（クラウドSaaS）の間でユーザー認証情報を安全にやりとりするための<strong>XMLベースの標準規格</strong>。<br>
+      「このユーザーが認証済みであることを、どんな形式で・どんな情報を含めて伝えるか」を定めたルール。</p>
+      <div class="analogy">
+        <strong>📮 SAMLのたとえ話</strong>
+        ビザ申請を想像してほしい。<br>
+        日本の外務省（= AD FS）が「この人は日本国民で、パスポート番号はXXXXです」と書いた公式書類（= SAMLアサーション）を発行。<br>
+        渡航先の入国審査（= 給与計算SaaS）はその書類を見て入国（= ログイン）を許可する。<br>
+        SAMLは「その書類の書き方の国際標準」。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">SAMLに登場する3つのデータ</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">A</div>
+          <div class="step-body">
+            <strong>SAMLアサーション（Assertion）</strong>
+            <p>「ユーザーが認証済みであること」を証明するXMLデータ本体。ユーザー名・メール・グループ情報などを含む。AD FSが発行し、デジタル署名が付く。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">B</div>
+          <div class="step-body">
+            <strong>SAMLリクエスト（Request）</strong>
+            <p>SP（給与計算SaaS）が「認証してください」とIdP（AD FS）に送るリクエスト。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">C</div>
+          <div class="step-body">
+            <strong>SAMLレスポンス（Response）</strong>
+            <p>IdP（AD FS）が「認証OKです。このアサーションを持って帰ってください」とSPに返す応答。アサーションを含む。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="tag tag-teal">重要</span> SAMLメタデータとは何か</div>
+      <p style="margin-bottom:12px">SAMLメタデータは「IdPとSPが互いの設定情報を交換するためのXMLファイル」。<br>信頼関係を構築するために<strong>相手に渡す設定書類</strong>。</p>
+      <div class="meta-box">
+        <div class="meta-row"><span class="key">entityID</span><span class="val">"https://adfs.company.com/adfs/services/trust"</span><span class="cmt">— AD FSの識別子</span></div>
+        <div class="meta-row"><span class="key">SingleSignOnService</span><span class="val">"https://adfs.company.com/adfs/ls/"</span><span class="cmt">— SSOのエンドポイントURL</span></div>
+        <div class="meta-row"><span class="key">SingleLogoutService</span><span class="val">"https://adfs.company.com/adfs/ls/?wa=wsignout1.0"</span><span class="cmt">— ログアウトURL</span></div>
+        <div class="meta-row"><span class="key">X509Certificate</span><span class="val">"MIIDXTCCAkWg..." </span><span class="cmt">— トークン署名証明書（公開鍵）</span></div>
+        <div class="meta-row"><span class="key">NameIDFormat</span><span class="val">"emailAddress"</span><span class="cmt">— ユーザーの識別方式</span></div>
+      </div>
+      <div class="info-box amber">
+        <strong>⚠️ 「証明書だけ送る」より「メタデータを送る」方が上位互換</strong>
+        選択肢①の「AD FSのトークン署名証明書を送信」は証明書（上記のX509Certificate）のみを渡す行為。
+        選択肢②の「SAMLメタデータを送信」はエンドポイントURL・証明書・識別子など<strong>すべてを含む</strong>。試験では②が正解になる理由がこれ。
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ════════════════════════════ TAB 4: 認証フロー ════════════════════════════ -->
+<div class="tab-pane" id="tab-flow">
+<div class="container">
+
+  <div class="section">
+    <div class="section-title"><span class="icon icon-green">🔄</span>SSO認証フロー（全体の流れ）</div>
+
+    <div class="card">
+      <div class="card-title">フェデレーション SSO が動く仕組み（SP-Initiated）</div>
+      <p style="margin-bottom:16px; font-size:13px; color:var(--muted)">ユーザーがクラウドSaaS（SP）にアクセスしてSSOが発動するパターン。最も一般的。</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>ユーザーが給与計算SaaSにアクセス</strong>
+            <p>ブラウザで <code>payroll.example.com</code> を開く。<br>SaaSはログインしていないユーザーを検出。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>SP → IdP へリダイレクト（SAMLリクエスト）</strong>
+            <p>SaaSが「認証してください」とAD FS（社内サーバー）へSAMLリクエストを含むリダイレクトを返す。<br>ユーザーは自動的に <code>adfs.company.com</code> へ飛ばされる。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>AD FS がユーザーを認証</strong>
+            <p>AD FSはWindows統合認証（Kerberos/NTLM）でドメイン参加PCのユーザーを<strong>プロンプトなしで</strong>認証。<br>AD に照合し、認証OK なら SAMLアサーションを生成。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <strong>AD FS → SP へ SAMLアサーション送信</strong>
+            <p>署名付きのSAMLアサーション（「このユーザーは◯◯で認証済み」）をブラウザ経由でSaaSへ送る。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <strong>SP がアサーションを検証してログイン完了</strong>
+            <p>SaaSはAD FSの公開鍵（メタデータ内の証明書）でアサーションの署名を検証。<br>問題なければログイン完了。ユーザーにはパスワード入力画面は一切表示されない。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">全体像を図で見る</div>
+
+      <div class="flow">
+        <div class="flow-row">
+          <div class="flow-box navy-box" style="max-width:160px">
+            <span class="box-label">ユーザー</span>
+            ドメイン参加PC<br>（AD認証済み）
+          </div>
+          <div class="flow-arrow-h">⇄</div>
+          <div class="flow-box blue-box">
+            <span class="box-label">AD FS（IdP）</span>
+            社内サーバー<br>SAMLトークン発行
+          </div>
+          <div class="flow-arrow-h">⇄</div>
+          <div class="flow-box amber-box">
+            <span class="box-label">給与計算SaaS（SP）</span>
+            クラウドサービス<br>トークンを受け取り認証
+          </div>
+        </div>
+        <div class="flow-arrow-v">↕</div>
+        <div class="flow-row" style="justify-content:center">
+          <div class="flow-box green-box" style="max-width:320px">
+            <span class="box-label">Active Directory</span>
+            ユーザー情報・パスワードDB<br>（AD FSが照合に使う）
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:8px">
+        <div class="flow-label">← 社内ネットワーク ─────────────────────── インターネット →</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="tag tag-amber">今回の問題の初期状態との比較</span></div>
+      <div class="compare">
+        <table>
+          <thead><tr><th>状態</th><th>何が起きるか</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>設定前（問題の初期状態）</td>
+              <td>給与計算SaaSはAD FSを知らない → SAMLアサーションを送っても検証できない → ユーザーにパスワード入力を要求</td>
+            </tr>
+            <tr>
+              <td>設定後（正解の操作実施後）</td>
+              <td>① AD FS側に給与計算SaaSを登録 ② SaaS側にAD FSの情報を提供 → 相互に信頼が確立 → SSO動作</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ════════════════════════════ TAB 5: 設定要素 ════════════════════════════ -->
+<div class="tab-pane" id="tab-config">
+<div class="container">
+
+  <div class="section">
+    <div class="section-title"><span class="icon icon-amber">⚙️</span>フェデレーション設定に必要な2つの操作</div>
+
+    <div class="info-box blue" style="margin-bottom:20px">
+      <strong>🔑 核心の考え方</strong>
+      フェデレーションは「双方向の信頼設定」。自社AD FS側の設定（③）と、相手SaaS側への情報提供（②）の両方が必要。片方だけでは動かない。
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="tag tag-navy">操作 ③</span> Relying Party Trust（証明書利用者の信頼）を追加</div>
+      <p style="margin-bottom:12px"><strong>自社AD FSコンソール上で「この給与計算SaaSにはトークンを発行してよい」と登録する操作。</strong></p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>AD FSコンソールを開く</strong>
+            <p>Windows Server の AD FS管理ツール（Server Manager または MMC スナップイン）を起動。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>「証明書利用者の信頼の追加」ウィザードを実行</strong>
+            <p>給与計算SaaSのSAMLメタデータURLまたはファイルを読み込む。相手のEntityID・エンドポイントURLが登録される。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>クレームルールを設定</strong>
+            <p>「どのユーザー属性（名前・メール・グループ等）をトークンに含めてSaaSに渡すか」を設定。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="analogy">
+        <strong>🏪 Relying Party Trust のたとえ話</strong>
+        ホテルのカードキーシステムの「許可リスト」。<br>
+        フロント（= AD FS）が「このホテルのカードキーはジムにも使えますよ」と<strong>ジム（= 給与計算SaaS）側の名前をシステムに登録</strong>する行為。<br>
+        登録がなければ、どんな正規のカードキーを持っていても入れない。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="tag tag-teal">操作 ②</span> SAMLメタデータを給与計算プロバイダーに送信</div>
+      <p style="margin-bottom:12px"><strong>相手SaaS側に「うちのAD FSはこういう設定ですよ」という情報を渡す操作。</strong></p>
+
+      <p style="font-size:13px; margin-bottom:12px">AD FSのメタデータは以下のURLで公開されている：</p>
+      <div class="meta-box">
+        <div class="meta-row">
+          <span class="key">メタデータURL</span>
+          <span class="val">https://[AD FSサーバー名]/FederationMetadata/2007-06/FederationMetadata.xml</span>
+        </div>
+      </div>
+
+      <p style="font-size:13px; margin-top:12px; margin-bottom:12px">このメタデータに含まれる情報：</p>
+
+      <div class="compare">
+        <table>
+          <thead><tr><th>含まれる情報</th><th>給与SaaSが何に使うか</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>エンドポイントURL</td>
+              <td>SAMLリクエストをどこに送ればよいか知るため</td>
+            </tr>
+            <tr>
+              <td>トークン署名証明書（公開鍵）</td>
+              <td>受け取ったアサーションの署名が本物か検証するため</td>
+            </tr>
+            <tr>
+              <td>EntityID</td>
+              <td>どのAD FSと通信するか識別するため</td>
+            </tr>
+            <tr>
+              <td>NameID形式</td>
+              <td>ユーザー識別子の形式（メールアドレス等）を合わせるため</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="analogy" style="margin-top:12px">
+        <strong>📋 メタデータ送付のたとえ</strong>
+        銀行（= AD FS）の「会社案内パンフレット」を提携店（= 給与計算SaaS）に渡す行為。<br>
+        「うちの銀行の住所（URL）はここで、判子（証明書）はこういう形ですよ」という情報を渡すことで、<br>
+        提携店が「確かに本物の銀行からの証明書だ」と確認できるようになる。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="tag tag-red">NG操作</span> Azure portal でアプリ登録（選択肢④）がなぜ不正解か</div>
+      <div class="compare">
+        <table>
+          <thead><tr><th>操作</th><th>使う認証基盤</th><th>今回の問題に合うか</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Azure portal でアプリ登録</td>
+              <td>Entra ID（クラウドIdP）</td>
+              <td class="ng">✗ 不適合</td>
+            </tr>
+            <tr>
+              <td>AD FSコンソールで RPT 追加</td>
+              <td>AD FS（オンプレIdP）</td>
+              <td class="ok">✓ 適合</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-box red">
+        <strong>🚨 混同注意</strong>
+        問題文に「AD FSはシングルサインオンに使用されています」とある。IdPはAD FS。<br>
+        Entra IDをIdPとして使う場合はAzureポータルのアプリ登録が必要だが、今回は<strong>AD FSが主役</strong>なのでその操作は不要。
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ════════════════════════════ TAB 6: 問題解説 ════════════════════════════ -->
+<div class="tab-pane" id="tab-exam">
+<div class="container">
+
+  <div class="section">
+    <div class="section-title"><span class="icon icon-red">📝</span>問題シナリオの完全解析</div>
+
+    <div class="scenario">
+      <h3>📋 問題の状況整理</h3>
+      <ul>
+        <li>オンプレミスの給与計算ソリューションをクラウドに移行中</li>
+        <li>Microsoft Entra Connect 構成済み（ADドメイン → Azure に同期）</li>
+        <li>ドメイン機能レベル：Windows Server 2012 R2</li>
+        <li>AD FS がシングルサインオンに使用中</li>
+        <li>ユーザーが<strong>新しいクラウド給与SaaS</strong>に接続すると資格情報の入力を求められる</li>
+      </ul>
+      <div class="problem-text">
+        🎯 要件：認証プロンプトなしで新しい給与計算クラウドに接続できるようにする<br>
+        = <strong>給与計算SaaSへのSSO（フェデレーション認証）を新たに構成する</strong>
+      </div>
+    </div>
+
+    <div class="info-box blue" style="margin-bottom:20px">
+      <strong>🔍 「認証プロンプトが出る」原因</strong>
+      Entra Connect で ID同期はされているが、<strong>新しい給与計算SaaSとAD FSの間にまだ信頼関係が設定されていない</strong>。
+      AD FSはその SaaS を知らないのでトークンを発行しない → SaaS は AD FS に頼れないのでユーザーに直接パスワードを聞く。
+    </div>
+
+    <div class="section-title" style="margin-top:32px"><span class="icon icon-amber">✅</span>各選択肢の解説</div>
+
+    <div class="answer-grid">
+
+      <div class="answer-card">
+        <div class="answer-header" onclick="toggleAnswer(this)">
+          <span class="verdict v-wrong">✗ 不正解</span>
+          <span>① AD FS のトークン署名証明書を給与計算会社に送信する</span>
+          <span class="arrow-icon">▼</span>
+        </div>
+        <div class="answer-body">
+          <p style="margin-bottom:8px">
+            証明書だけでは<strong>エンドポイントURL（どこにSAMLリクエストを送るか）が分からない</strong>。<br>
+            给与計算SaaS側は証明書を持っていても AD FSへのアクセス先を知らないため、フェデレーションを開始できない。
+          </p>
+          <div class="info-box amber">
+            <strong>② のSAMLメタデータを送れば証明書も含まれる</strong>
+            メタデータには証明書＋エンドポイント＋EntityIDがすべて入っている。②が上位互換なのでこちらが正解になる。
+          </div>
+          <p style="margin-top:8px; color:var(--muted); font-size:12.5px">
+            ※ただし古いシステムや証明書のみを要求するSaaSでは①を使うこともある。試験では「よりベストプラクティスな」選択肢を選ぶこと。
+          </p>
+        </div>
+      </div>
+
+      <div class="answer-card">
+        <div class="answer-header" onclick="toggleAnswer(this)">
+          <span class="verdict v-correct">✓ 正解</span>
+          <span>② SAMLメタデータファイルをダウンロードして給与計算プロバイダーに送信する</span>
+          <span class="arrow-icon">▼</span>
+        </div>
+        <div class="answer-body">
+          <p style="margin-bottom:8px">
+            <strong>相手SaaS側に「AD FSの設定情報一式」を渡す操作</strong>。これにより給与計算SaaSはAD FSを信頼できる IdP として登録できる。
+          </p>
+          <div class="info-box green">
+            <strong>メタデータに何が入っているか（再確認）</strong>
+            ① SSOエンドポイントURL（SAMLリクエストの送り先）<br>
+            ② トークン署名証明書（受け取ったアサーションの署名検証用）<br>
+            ③ EntityID（どのAD FSか識別する一意のID）<br>
+            ④ NameIDフォーマット（ユーザー識別方法）
+          </div>
+          <p style="margin-top:8px">
+            AD FSのメタデータURL：<code>https://[サーバー]/FederationMetadata/2007-06/FederationMetadata.xml</code><br>
+            ここからダウンロードしてSaaSのサポートに渡す、またはURLを直接SaaSに設定する。
+          </p>
+        </div>
+      </div>
+
+      <div class="answer-card">
+        <div class="answer-header" onclick="toggleAnswer(this)">
+          <span class="verdict v-correct">✓ 正解</span>
+          <span>③ AD FSコンソールで給与計算会社を信頼された当事者の信頼として追加する</span>
+          <span class="arrow-icon">▼</span>
+        </div>
+        <div class="answer-body">
+          <p style="margin-bottom:8px">
+            <strong>自社AD FS側に「この給与計算SaaSはトークン発行先として信頼する」と登録する操作</strong>。
+            英語では "Relying Party Trust (RPT)" を追加する、とも言う。
+          </p>
+          <div class="info-box green">
+            <strong>なぜこれが必要か</strong>
+            AD FSはデフォルトでは誰にでもSAMLトークンを発行しない。「許可リスト」にSaaSを追加しないと、ユーザーが認証しようとしてもAD FSが「知らない相手には渡せない」と拒否する。
+          </div>
+          <p style="margin-top:8px">
+            設定内容：SaaSのEntityID・ACSエンドポイントURL・クレームルール（渡す属性の定義）など。<br>
+            SaaSのSAMLメタデータURLを読み込むと自動設定される場合が多い。
+          </p>
+        </div>
+      </div>
+
+      <div class="answer-card">
+        <div class="answer-header" onclick="toggleAnswer(this)">
+          <span class="verdict v-wrong">✗ 不正解</span>
+          <span>④ Azure portal 内で新しいアプリ登録を作成する</span>
+          <span class="arrow-icon">▼</span>
+        </div>
+        <div class="answer-body">
+          <p style="margin-bottom:8px">
+            「Azureポータルでアプリ登録」= <strong>Entra ID（クラウドIdP）を認証基盤として使う場合の操作</strong>。
+          </p>
+          <div class="info-box red">
+            <strong>今回はAD FSがIdP</strong>
+            問題文に「AD FSはシングルサインオンに使用されています」と明記。つまり<strong>認証の中心はオンプレAD FS</strong>。<br>
+            Entra ID をIdPとして使うのであればこの選択肢だが、それは問題の構成と異なる。<br><br>
+            Entra Connect はあくまで「IDデータを同期するツール」であり、認証基盤を Entra ID に切り替えるものではない。
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="icon icon-green">💡</span>正解の組み合わせと理由の一言まとめ</div>
+    <div class="card">
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; gap:12px; align-items:center">
+          <span class="tag tag-green" style="font-size:13px; padding:5px 14px">正解①</span>
+          <span>AD FSコンソールで給与計算会社をRPT（証明書利用者の信頼）として追加</span>
+        </div>
+        <div style="color:var(--muted); font-size:13px; padding-left:0; padding: 8px 12px; background:var(--light); border-radius:6px">
+          ▸ 自社AD FS側の設定。「この相手にはトークンを発行してよい」とAD FSに教える
+        </div>
+        <div style="display:flex; gap:12px; align-items:center; margin-top:4px">
+          <span class="tag tag-green" style="font-size:13px; padding:5px 14px">正解②</span>
+          <span>SAMLメタデータをダウンロードして給与計算プロバイダーに送信</span>
+        </div>
+        <div style="color:var(--muted); font-size:13px; padding: 8px 12px; background:var(--light); border-radius:6px">
+          ▸ 相手SaaS側への設定情報提供。「うちのAD FSはここにある。証明書はこれ」と相手に教える
+        </div>
+      </div>
+      <div class="info-box blue" style="margin-top:16px">
+        <strong>🤝 双方向の信頼確立が原則</strong>
+        自社AD FS：「給与計算SaaSを信頼リストに追加」（③）<br>
+        給与計算SaaS：「このAD FSからのトークンを信頼する設定」（② メタデータ受取後に設定）<br>
+        どちらか一方だけでは SSO は機能しない。
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ════════════════════════════ TAB 7: 試験対策 ════════════════════════════ -->
+<div class="tab-pane" id="tab-tips">
+<div class="container">
+
+  <div class="section">
+    <div class="section-title"><span class="icon icon-purple">🎯</span>類似問題で使えるパターン認識</div>
+
+    <div class="tip-grid">
+      <div class="tip-card">
+        <h4>📌 パターン①：AD FSで新SaaSにSSO追加</h4>
+        <p>「AD FS運用中に新しいクラウドSaaSへのSSO設定」→ 必ずこのセット：<br>
+        <span class="pill">RPT（証明書利用者の信頼）を追加</span>
+        <span class="pill">SAMLメタデータをSaaSに送付</span></p>
+      </div>
+      <div class="tip-card">
+        <h4>📌 パターン②：IdPを見極める</h4>
+        <p>問題文に「AD FSを使用中」→ IdPはAD FS（オンプレ）<br>
+        「Entra IDを使用中」→ IdPはEntra ID（クラウド）<br>
+        IdPが違うと設定方法・使うツールが変わる。</p>
+      </div>
+      <div class="tip-card">
+        <h4>📌 パターン③：メタデータ vs 証明書のみ</h4>
+        <p>「トークン署名証明書を送る」vs「SAMLメタデータを送る」が両方選択肢にある場合は<strong>メタデータが正解</strong>。証明書単体より情報が多い（上位互換）。</p>
+      </div>
+      <div class="tip-card">
+        <h4>📌 パターン④：Azureアプリ登録の出番</h4>
+        <p>「Azureポータルでアプリ登録」が正解になるのは<strong>Entra IDをIdPとして使う場合のみ</strong>。AD FSが主役の問題では誤り選択肢として機能する。</p>
+      </div>
+      <div class="tip-card">
+        <h4>📌 パターン⑤：Entra Connectの役割に注意</h4>
+        <p>Entra Connectは「IDデータの同期ツール」。認証基盤をクラウドに移行するわけではない。AD FSを使い続けながらEntra Connectで同期することは共存できる。</p>
+      </div>
+      <div class="tip-card">
+        <h4>📌 パターン⑥：Seamless SSO との違い</h4>
+        <p>「Entra Seamless SSO」はEntra Connect + Kerberos で実現するSSO（AD FS不要）。AD FSありの問題と混同しないこと。AD FSがある = フェデレーション設定の話。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="icon icon-green">🧠</span>まとめ：頭に入れる一言メモ</div>
+
+    <div class="card">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num" style="background:var(--amber); font-size:16px">🔑</div>
+          <div class="step-body">
+            <strong>AD FS = オンプレ IdP。SAMLトークンを発行する銀行のフロント</strong>
+            <p>Entra ID（クラウド）とは別物。AD FSがある環境では認証の中心はオンプレにある。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:var(--blue); font-size:16px">🤝</div>
+          <div class="step-body">
+            <strong>フェデレーション = 双方向の信頼設定が必須</strong>
+            <p>自社AD FS側：RPT（証明書利用者の信頼）を追加。<br>
+            相手SaaS側：SAMLメタデータを受け取り設定。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:var(--purple); font-size:16px">📋</div>
+          <div class="step-body">
+            <strong>SAMLメタデータ = エンドポイント + 証明書 + EntityID の設定書類</strong>
+            <p>証明書だけ渡す選択肢は「メタデータ送付」の劣化版。証明書のみではエンドポイントが分からない。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:var(--red); font-size:16px">🚫</div>
+          <div class="step-body">
+            <strong>Azureポータルのアプリ登録 = AD FS問題では不正解</strong>
+            <p>これはEntra IDがIdPのときの操作。AD FSが主役の問題では誤り選択肢として登場することが多い。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<footer>AD FS / SAML / フェデレーション SSO 完全攻略ガイド — SC-300 / AZ-500 / MS-102 対応</footer>
+
+<script>
+function switchTab(id) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function toggleAnswer(header) {
+  header.classList.toggle('open');
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+</script>
+</body>
+</html>
