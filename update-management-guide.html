@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Azure Update Management 完全攻略</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ━━━━━━━━━━━━━━━━━━━
+   TOKENS
+━━━━━━━━━━━━━━━━━━━ */
+:root{
+  --bg:      #0f1117;
+  --sur:     #161b27;
+  --card:    #1c2333;
+  --brd:     #2a3349;
+
+  --teal:    #0d9488;
+  --teal-l:  #2dd4bf;
+  --teal-xl: rgba(13,148,136,.12);
+  --cyan:    #0891b2;
+  --cyan-xl: rgba(8,145,178,.12);
+  --emerald: #059669;
+  --em-xl:   rgba(5,150,105,.12);
+  --amber:   #d97706;
+  --am-xl:   rgba(217,119,6,.12);
+  --red:     #dc2626;
+  --rd-xl:   rgba(220,38,38,.12);
+  --violet:  #7c3aed;
+  --vi-xl:   rgba(124,58,237,.12);
+  --sky:     #0284c7;
+  --sky-xl:  rgba(2,132,199,.12);
+
+  --txt:     #e2e8f0;
+  --muted:   #64748b;
+  --dim:     #94a3b8;
+
+  --mono:    'IBM Plex Mono', monospace;
+  --head:    'Outfit', 'Noto Sans JP', sans-serif;
+  --body:    'Noto Sans JP', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--txt);
+  font-family:var(--body);
+  font-size:14.5px;
+  line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+}
+ul{list-style:none}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   HEADER
+━━━━━━━━━━━━━━━━━━━ */
+.hd{
+  background:linear-gradient(150deg,#0a0f1a 0%,#0d1a1a 50%,#0a1520 100%);
+  padding:clamp(40px,8vw,68px) 20px clamp(36px,7vw,60px);
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+  border-bottom:1px solid var(--brd);
+}
+.hd::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 70% 50% at 25% 50%,rgba(13,148,136,.18),transparent),
+    radial-gradient(ellipse 50% 40% at 75% 40%,rgba(8,145,178,.15),transparent);
+}
+.hd::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--teal-l),var(--cyan),transparent);
+}
+.hd-in{position:relative;max-width:700px;margin:0 auto}
+.eyebrow{
+  display:inline-block;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--teal-l);border:1px solid rgba(45,212,191,.3);
+  border-radius:20px;padding:4px 14px;margin-bottom:20px;
+}
+.hd h1{
+  font-family:var(--head);
+  font-size:clamp(22px,5vw,40px);font-weight:800;
+  line-height:1.15;letter-spacing:-.025em;margin-bottom:14px;
+}
+.hd h1 em{font-style:normal;color:var(--teal-l)}
+.hd p{color:var(--dim);font-size:clamp(13px,2.5vw,14.5px);line-height:1.7}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   TAB NAV
+━━━━━━━━━━━━━━━━━━━ */
+.tnav{
+  position:sticky;top:0;z-index:100;
+  background:#0d1117;
+  border-bottom:1px solid var(--brd);
+  display:flex;overflow-x:auto;scrollbar-width:none;
+  padding:0 12px;gap:2px;
+}
+.tnav::-webkit-scrollbar{display:none}
+.tbtn{
+  flex-shrink:0;padding:13px 16px;
+  font-family:var(--body);font-size:12.5px;font-weight:500;
+  color:var(--muted);background:none;border:none;
+  border-bottom:2px solid transparent;
+  cursor:pointer;white-space:nowrap;
+  transition:color .2s,border-color .2s;
+  margin-bottom:-1px;
+}
+.tbtn:hover{color:var(--dim)}
+.tbtn.act{color:var(--teal-l);border-bottom-color:var(--teal);font-weight:700}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   PANES
+━━━━━━━━━━━━━━━━━━━ */
+.pane{display:none}
+.pane.act{display:block;animation:fup .3s ease both}
+@keyframes fup{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.wrap{max-width:860px;margin:0 auto;padding:36px 16px 72px}
+.sec{margin-bottom:48px}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   SEC TITLE
+━━━━━━━━━━━━━━━━━━━ */
+.st{
+  font-family:var(--head);
+  font-size:clamp(17px,3vw,21px);font-weight:700;
+  color:var(--txt);margin-bottom:20px;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--brd);
+}
+.si{
+  width:34px;height:34px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex-shrink:0;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   CARD
+━━━━━━━━━━━━━━━━━━━ */
+.card{
+  background:var(--card);border:1px solid var(--brd);
+  border-radius:12px;padding:clamp(18px,4vw,26px);
+  margin-bottom:16px;
+}
+.card:last-child{margin-bottom:0}
+.ct{
+  font-family:var(--head);font-size:15px;font-weight:700;
+  margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  color:var(--txt);
+}
+.card p{color:var(--dim);font-size:13.5px;line-height:1.8}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   TAGS
+━━━━━━━━━━━━━━━━━━━ */
+.tag{
+  display:inline-block;font-family:var(--mono);
+  font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  padding:2px 8px;border-radius:4px;white-space:nowrap;
+}
+.tg{color:var(--teal-l);background:var(--teal-xl);border:1px solid rgba(45,212,191,.25)}
+.tc{color:#67e8f9;background:var(--cyan-xl);border:1px solid rgba(8,145,178,.3)}
+.te{color:#6ee7b7;background:var(--em-xl);border:1px solid rgba(5,150,105,.3)}
+.ta{color:#fcd34d;background:var(--am-xl);border:1px solid rgba(217,119,6,.3)}
+.tr{color:#fca5a5;background:var(--rd-xl);border:1px solid rgba(220,38,38,.3)}
+.tv{color:#c4b5fd;background:var(--vi-xl);border:1px solid rgba(124,58,237,.3)}
+.ts{color:#7dd3fc;background:var(--sky-xl);border:1px solid rgba(2,132,199,.3)}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   INFO BOXES
+━━━━━━━━━━━━━━━━━━━ */
+.ib{border-radius:8px;padding:14px 18px;font-size:13.5px;line-height:1.75;margin:12px 0}
+.ib strong{display:block;margin-bottom:5px;font-size:13px}
+.ib.teal{background:var(--teal-xl);border:1px solid rgba(45,212,191,.25)}
+.ib.teal strong{color:var(--teal-l)}
+.ib.amber{background:var(--am-xl);border:1px solid rgba(217,119,6,.3)}
+.ib.amber strong{color:#fcd34d}
+.ib.red{background:var(--rd-xl);border:1px solid rgba(220,38,38,.3)}
+.ib.red strong{color:#fca5a5}
+.ib.emerald{background:var(--em-xl);border:1px solid rgba(5,150,105,.3)}
+.ib.emerald strong{color:#6ee7b7}
+.ib.sky{background:var(--sky-xl);border:1px solid rgba(2,132,199,.3)}
+.ib.sky strong{color:#7dd3fc}
+.ib.violet{background:var(--vi-xl);border:1px solid rgba(124,58,237,.3)}
+.ib.violet strong{color:#c4b5fd}
+
+.analogy{
+  background:rgba(217,119,6,.07);
+  border:1px solid rgba(217,119,6,.3);
+  border-left:3px solid var(--amber);
+  border-radius:8px;padding:16px 18px;
+  font-size:13.5px;line-height:1.8;margin:14px 0;color:var(--dim);
+}
+.analogy .al{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);margin-bottom:6px;display:block}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   GRID
+━━━━━━━━━━━━━━━━━━━ */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+@media(max-width:600px){.g2{grid-template-columns:1fr}.g3{grid-template-columns:1fr}}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   FEATURE CARD (colored top)
+━━━━━━━━━━━━━━━━━━━ */
+.fc{
+  background:var(--card);border:1px solid var(--brd);
+  border-radius:12px;padding:20px;
+  transition:border-color .2s;
+}
+.fc:hover{border-color:var(--teal)}
+.fc.t{border-top:3px solid var(--teal)}
+.fc.c{border-top:3px solid var(--cyan)}
+.fc.e{border-top:3px solid var(--emerald)}
+.fc.a{border-top:3px solid var(--amber)}
+.fc.r{border-top:3px solid var(--red)}
+.fc.v{border-top:3px solid var(--violet)}
+.fc h3{font-family:var(--head);font-size:14.5px;font-weight:700;color:var(--txt);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.fc ul{list-style:none}
+.fc ul li{
+  font-size:13px;padding:6px 0;
+  border-bottom:1px solid var(--brd);
+  display:flex;gap:8px;align-items:flex-start;
+  color:var(--dim);line-height:1.6;
+}
+.fc ul li:last-child{border-bottom:none}
+.fc ul li::before{content:'▸';color:var(--teal-l);flex-shrink:0;font-size:11px;margin-top:2px}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   FLOW DIAGRAM
+━━━━━━━━━━━━━━━━━━━ */
+.flow-wrap{overflow-x:auto;padding:8px 0;margin:14px 0}
+.flow{display:flex;align-items:center;min-width:400px;gap:0}
+.fbox{
+  flex:1;border:2px solid var(--brd);border-radius:10px;
+  padding:12px 10px;text-align:center;font-size:12px;font-weight:500;
+  background:var(--card);line-height:1.4;
+}
+.fbox .fl{font-family:var(--mono);font-size:9px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em}
+.fbox.ft{border-color:var(--teal);background:var(--teal-xl)}
+.fbox.fc2{border-color:var(--cyan);background:var(--cyan-xl)}
+.fbox.fe{border-color:var(--emerald);background:var(--em-xl)}
+.fbox.fa{border-color:var(--amber);background:var(--am-xl)}
+.fbox.fr{border-color:var(--red);background:var(--rd-xl)}
+.farr{padding:0 6px;color:var(--muted);font-size:16px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px}
+.farr span{font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   STEP LIST
+━━━━━━━━━━━━━━━━━━━ */
+.steps{display:flex;flex-direction:column}
+.step{display:flex;gap:14px;position:relative}
+.step:not(:last-child)::before{
+  content:'';position:absolute;left:16px;top:35px;
+  width:2px;height:calc(100% - 4px);
+  background:linear-gradient(180deg,var(--teal),transparent);
+}
+.sn{
+  width:34px;height:34px;border-radius:50%;
+  background:var(--teal);color:#fff;
+  font-family:var(--mono);font-size:13px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;z-index:1;
+  box-shadow:0 0 12px rgba(13,148,136,.4);
+}
+.sb{padding:4px 0 26px;flex:1}
+.sb strong{display:block;font-size:14px;font-weight:700;margin-bottom:5px;color:var(--txt)}
+.sb p{color:var(--dim);font-size:13px}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   TABLE
+━━━━━━━━━━━━━━━━━━━ */
+.tw{overflow-x:auto;margin-bottom:14px;border-radius:10px;border:1px solid var(--brd)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:rgba(13,148,136,.2)}
+th{
+  color:var(--teal-l);padding:10px 14px;text-align:left;
+  font-family:var(--mono);font-size:10px;letter-spacing:.09em;font-weight:600;
+  text-transform:uppercase;white-space:nowrap;border-bottom:1px solid var(--brd);
+}
+td{padding:10px 14px;border-bottom:1px solid var(--brd);color:var(--dim);vertical-align:top;line-height:1.6}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.ok{color:#6ee7b7;font-weight:700}
+.ng{color:#fca5a5}
+.na{color:var(--muted)}
+.hl td{background:rgba(13,148,136,.1);color:var(--txt);font-weight:600}
+code{font-family:var(--mono);font-size:11.5px;background:rgba(255,255,255,.07);padding:2px 7px;border-radius:4px;color:var(--teal-l)}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   REGION MAP (key visual)
+━━━━━━━━━━━━━━━━━━━ */
+.rmap{
+  background:var(--card);border:1px solid var(--brd);
+  border-radius:12px;padding:clamp(18px,4vw,28px);
+  margin-bottom:16px;
+}
+.rm-grid{
+  display:grid;grid-template-columns:1fr auto 1fr;
+  gap:12px;align-items:center;margin:16px 0;
+}
+@media(max-width:520px){.rm-grid{grid-template-columns:1fr;text-align:center}}
+.rm-box{
+  border-radius:10px;padding:16px;text-align:center;
+  border:2px solid;
+}
+.rm-box.east{border-color:var(--teal);background:var(--teal-xl)}
+.rm-box.central{border-color:var(--amber);background:var(--am-xl)}
+.rm-box.new{border-color:var(--emerald);background:var(--em-xl)}
+.rm-box .rml{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:block}
+.rm-box.east .rml{color:var(--teal-l)}
+.rm-box.central .rml{color:#fcd34d}
+.rm-box.new .rml{color:#6ee7b7}
+.rm-box strong{display:block;font-size:13.5px;font-weight:700;margin-bottom:4px;color:var(--txt)}
+.rm-box span{font-size:12px;color:var(--dim)}
+.rm-arrow{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  font-size:22px;color:var(--muted);
+}
+.rm-arrow small{font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   ACCORDION
+━━━━━━━━━━━━━━━━━━━ */
+.acc-list{display:flex;flex-direction:column;gap:10px}
+.acc{background:var(--card);border:1px solid var(--brd);border-radius:10px;overflow:hidden}
+.ah{
+  display:flex;align-items:center;gap:12px;
+  padding:15px 18px;cursor:pointer;user-select:none;
+  transition:background .15s;
+}
+.ah:hover{background:rgba(255,255,255,.03)}
+.verd{font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;flex-shrink:0}
+.v-ok{color:#6ee7b7;background:var(--em-xl);border:1px solid rgba(5,150,105,.3)}
+.v-ng{color:#fca5a5;background:var(--rd-xl);border:1px solid rgba(220,38,38,.3)}
+.aq{font-size:13.5px;font-weight:500;flex:1;line-height:1.5;color:var(--txt)}
+.aa{color:var(--muted);font-size:11px;margin-left:auto;flex-shrink:0;transition:transform .2s}
+.ah.op .aa{transform:rotate(180deg)}
+.ab{display:none;padding:0 18px 18px;font-size:13.5px;color:var(--dim);line-height:1.8;border-top:1px solid var(--brd)}
+.ab.op{display:block;padding-top:16px}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   SCENARIO
+━━━━━━━━━━━━━━━━━━━ */
+.scen{
+  background:linear-gradient(135deg,#0d1a1a,#0a1220);
+  border:1px solid var(--brd);border-radius:12px;
+  padding:clamp(18px,4vw,28px);margin-bottom:24px;
+}
+.scen h3{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--teal-l);margin-bottom:16px}
+.scen ul li{
+  font-size:13.5px;padding:7px 0;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  display:flex;gap:10px;line-height:1.65;
+}
+.scen ul li:last-child{border-bottom:none}
+.scen ul li::before{content:'▸';color:var(--teal-l);flex-shrink:0;margin-top:2px}
+.scen .prob{
+  margin-top:14px;
+  background:rgba(217,119,6,.1);border:1px solid rgba(217,119,6,.3);
+  border-radius:7px;padding:12px 16px;font-size:13px;color:#fde68a;line-height:1.65;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   KEY BANNER
+━━━━━━━━━━━━━━━━━━━ */
+.kb{
+  background:linear-gradient(135deg,rgba(13,148,136,.15),rgba(8,145,178,.1));
+  border:1px solid rgba(45,212,191,.25);
+  border-radius:12px;padding:clamp(18px,4vw,26px);margin-bottom:20px;
+}
+.kb h3{font-family:var(--head);font-size:16px;font-weight:700;color:var(--teal-l);margin-bottom:12px}
+.kb ul li{
+  font-size:13.5px;padding:6px 0;
+  border-bottom:1px solid rgba(45,212,191,.1);
+  display:flex;gap:10px;line-height:1.65;
+}
+.kb ul li:last-child{border-bottom:none}
+.kb ul li::before{content:'→';color:var(--teal-l);flex-shrink:0}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   TIPS
+━━━━━━━━━━━━━━━━━━━ */
+.tgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.tip{
+  background:var(--card);border:1px solid var(--brd);
+  border-radius:10px;border-top:3px solid var(--teal);padding:18px;
+}
+.tip h4{font-family:var(--head);font-size:13.5px;font-weight:700;margin-bottom:8px;color:var(--txt)}
+.tip p{font-size:12.5px;color:var(--muted);line-height:1.7}
+
+/* ━━━━━━━━━━━━━━━━━━━
+   FOOTER
+━━━━━━━━━━━━━━━━━━━ */
+.ft{
+  background:#0a0d14;border-top:1px solid var(--brd);
+  text-align:center;padding:20px;
+  font-family:var(--mono);font-size:11px;color:var(--muted);
+}
+
+@media(max-width:480px){
+  .ah{padding:13px 14px;gap:9px}
+  .aq{font-size:13px}
+  .card{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hd">
+  <div class="hd-in">
+    <div class="eyebrow">AZ-104 / AZ-305 対応</div>
+    <h1>Azure <em>Update Management</em><br>ゼロから完全攻略</h1>
+    <p>Log Analytics・Automation・リージョン制約まで一気通貫で理解する</p>
+  </div>
+</header>
+
+<!-- TABS -->
+<nav class="tnav" id="tnav">
+  <button class="tbtn act" onclick="sw('what')">① そもそも論</button>
+  <button class="tbtn" onclick="sw('3pieces')">② 3つの構成要素</button>
+  <button class="tbtn" onclick="sw('how')">③ 動く仕組み</button>
+  <button class="tbtn" onclick="sw('region')">④ リージョン制約</button>
+  <button class="tbtn" onclick="sw('exam')">⑤ 問題解説</button>
+  <button class="tbtn" onclick="sw('tips')">⑥ 試験対策</button>
+</nav>
+
+<!-- ═══════════════ TAB 1: そもそも ═══════════════ -->
+<div class="pane act" id="p-what"><div class="wrap">
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:rgba(13,148,136,.2)">🔄</span>Update Management とは何か</div>
+
+    <div class="card">
+      <div class="ct"><span class="tag tg">Update Management</span> 定義</div>
+      <p>Azure の VM（Windows / Linux）に対するOS・ソフトウェアのパッチ適用を、スケジュール管理・状態把握・自動化できるサービス。<br>
+      大量のVMを手作業でパッチ当てするのは非現実的 → これを自動化・可視化するのが目的。</p>
+      <div class="analogy">
+        <span class="al">🏥 わかりやすいたとえ</span>
+        病院の全患者（VM）を定期健診（パッチ適用）させる仕組み。<br>
+        誰に何のワクチン（パッチ）が必要か把握して（Log Analytics）、
+        スケジュールを組んで（Azure Automation）、
+        実際に接種する（エージェント経由でパッチ適用）。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ct">なぜ3つのサービスが必要なのか</div>
+      <div class="flow-wrap">
+        <div class="flow">
+          <div class="fbox ft"><span class="fl">VMの状態収集</span>Log Analytics<br>Workspace</div>
+          <div class="farr">→<span>データ送信</span></div>
+          <div class="fbox fc2"><span class="fl">スケジュール管理</span>Azure<br>Automation</div>
+          <div class="farr">→<span>実行指示</span></div>
+          <div class="fbox fe"><span class="fl">実際のVM</span>Agent経由で<br>パッチ適用</div>
+        </div>
+      </div>
+      <p style="margin-top:12px;font-size:13px;color:var(--muted)">
+        「何が必要か把握する」「いつやるか決める」「実際にやる」の3役割を3サービスが担う。
+        Update Management はこの3つを組み合わせた<strong style="color:var(--txt)">ソリューション</strong>（サービス単体ではない）。
+      </p>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:rgba(8,145,178,.2)">📦</span>Update Management を有効化するために必要なもの</div>
+    <div class="g3">
+      <div class="fc t">
+        <h3>🗄️ Log Analytics<br>Workspace</h3>
+        <ul>
+          <li>VMからデータを収集・蓄積</li>
+          <li>パッチ適用状態を保存・クエリ</li>
+          <li>Automation と<strong style="color:var(--teal-l)">リンク</strong>が必要</li>
+        </ul>
+      </div>
+      <div class="fc c">
+        <h3>⚙️ Azure<br>Automation Account</h3>
+        <ul>
+          <li>Update Management ソリューションのエンジン</li>
+          <li>パッチ適用スケジュールを管理</li>
+          <li>Workspaceと<strong style="color:#67e8f9">同一リージョン</strong>に必要</li>
+        </ul>
+      </div>
+      <div class="fc e">
+        <h3>🤖 MMA/OMS<br>エージェント</h3>
+        <ul>
+          <li>VM内にインストールするソフト</li>
+          <li>VMの状態をワークスペースに送信</li>
+          <li>「VMを接続する」= エージェント設定</li>
+        </ul>
+      </div>
+    </div>
+    <div class="ib amber">
+      <strong>⚠️ 「ソリューション」という概念</strong>
+      Update Management はAzure Automation + Log Analytics の上に乗る<strong>ソリューション</strong>。
+      Automation AccountにUpdate Managementを有効化すると、指定したLog Analytics Workspaceにソリューションが展開される。
+    </div>
+  </div>
+
+</div></div>
+
+<!-- ═══════════════ TAB 2: 3要素 ═══════════════ -->
+<div class="pane" id="p-3pieces"><div class="wrap">
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:rgba(13,148,136,.2)">🗄️</span>Log Analytics Workspace とは</div>
+    <div class="card">
+      <div class="ct"><span class="tag tg">Log Analytics Workspace</span> 概要</div>
+      <p>Azureのログ・メトリクスを収集・保存・クエリするためのデータストア。<br>
+      VMやサービスから送られてくる「ログデータの保管庫＋分析エンジン」。</p>
+      <div class="analogy">
+        <span class="al">📊 たとえ話</span>
+        工場（VM群）の各機械から送られてくる稼働ログを集める「中央の管理室のデータベース」。<br>
+        「機械Aは今日15件のエラーが出た」「機械Bのパッチが3つ未適用」をここで把握できる。
+      </div>
+      <div class="ib teal" style="margin-top:14px">
+        <strong>🔗 VMとの接続方法</strong>
+        VM に「MMA（Microsoft Monitoring Agent）」または「OMS Agent（Linux）」をインストールし、
+        ワークスペースIDとキーを設定する。これが「linux1 を Log Analytics workspace に接続する」という操作の実態。
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:rgba(8,145,178,.2)">⚙️</span>Azure Automation Account とは</div>
+    <div class="card">
+      <div class="ct"><span class="tag tc">Azure Automation</span> 概要</div>
+      <p>Azureリソースの操作・管理を自動化するサービス。Runbook（スクリプト）の実行、スケジュール設定、構成管理（DSC）、Update Management などを提供。</p>
+      <div class="analogy">
+        <span class="al">⏰ たとえ話</span>
+        「毎週日曜日の深夜2時に全VMのパッチ適用を実行せよ」というスケジュールを組む<strong>予約スケジューラー</strong>。<br>
+        Runbook = パッチ適用などの手順書。Automation = その手順書を決まった時間に実行する人。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ct"><span class="tag tr">重要</span> Automation と Workspace の関係</div>
+      <p style="margin-bottom:12px">Update Management を使うには、Automation Account と Log Analytics Workspace を<strong style="color:var(--txt)">リンク（関連付け）</strong>する必要がある。</p>
+      <div class="flow-wrap">
+        <div class="flow">
+          <div class="fbox fc2"><span class="fl">Azure Automation</span>Update Management<br>ソリューション有効化</div>
+          <div class="farr">↔<span>リンク必須</span></div>
+          <div class="fbox ft"><span class="fl">Log Analytics Workspace</span>VMの更新情報を<br>蓄積・分析</div>
+        </div>
+      </div>
+      <div class="ib red" style="margin-top:12px">
+        <strong>🚨 リンクにはリージョン制約がある</strong>
+        Automation Account と Log Analytics Workspace は<strong>同一リージョンまたは決まったペアのリージョン</strong>でないとリンクできない。これが今回の問題の核心。
+      </div>
+    </div>
+  </div>
+
+</div></div>
+
+<!-- ═══════════════ TAB 3: 動く仕組み ═══════════════ -->
+<div class="pane" id="p-how"><div class="wrap">
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:rgba(5,150,105,.2)">🔄</span>Update Management が動くまでの全体フロー</div>
+
+    <div class="card">
+      <div class="ct">セットアップから自動パッチ適用までの5ステップ</div>
+      <div class="steps">
+        <div class="step">
+          <div class="sn">1</div>
+          <div class="sb">
+            <strong>Log Analytics Workspace を作成する</strong>
+            <p>Update Management 用のワークスペースを用意。<strong>Automation Account と同じリージョン（またはペアリージョン）</strong>に作成する必要がある。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sn">2</div>
+          <div class="sb">
+            <strong>Azure Automation Account を作成し Workspace とリンクする</strong>
+            <p>Automation Account に Update Management ソリューションを有効化し、Step1のWorkspaceと接続する。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sn">3</div>
+          <div class="sb">
+            <strong>VMにエージェントをインストールし Workspace に接続する</strong>
+            <p>Linux VMならOMS Agent、Windows VMならMMAをインストール。WorkspaceIDとキーを設定してデータ送信を開始。これが「VMをWorkspaceに接続する」という操作。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sn">4</div>
+          <div class="sb">
+            <strong>Update Management がVMの状態を把握する</strong>
+            <p>VMからOSパッチ情報がWorkspaceに送られ、「何が適用済みか・何が未適用か」が可視化される。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sn">5</div>
+          <div class="sb">
+            <strong>スケジュールを設定してパッチを自動適用する</strong>
+            <p>Automation Account 上でメンテナンスウィンドウとスケジュールを設定。定期的に自動パッチ適用が実行される。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ct"><span class="tag ta">注意</span> Runbook と Update Management の関係</div>
+      <p>Runbook（選択肢①）はAzure Automationで実行できる汎用スクリプト。Update Management は<strong>Runbookとは別の専用機能</strong>として提供されており、Update Managementのためにわざわざ Runbook を定義する必要はない。</p>
+      <div class="ib amber">
+        <strong>⚠️ 試験頻出の罠</strong>
+        「Update Management = Runbook」と誤解しやすいが、Update Management はAutomation Account の中の独立したソリューション。Runbookは「自分でスクリプトを書いて実行する」機能で別物。
+      </div>
+    </div>
+  </div>
+
+</div></div>
+
+<!-- ═══════════════ TAB 4: リージョン制約 ═══════════════ -->
+<div class="pane" id="p-region"><div class="wrap">
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:rgba(217,119,6,.2)">🗺️</span>リージョン制約 — 今回の問題の核心</div>
+
+    <div class="ib red">
+      <strong>🚨 Update Management の最重要制約</strong>
+      Azure Automation Account と Log Analytics Workspace は<strong>サポートされた同一リージョンまたはリージョンペア</strong>でないとリンクできない。<br>
+      これが守られていないと Update Management を有効化できない。
+    </div>
+
+    <div class="rmap">
+      <div class="ct">今回の問題の構成</div>
+      <div class="rm-grid">
+        <div class="rm-box east">
+          <span class="rml">linux1 VM</span>
+          <strong>East US</strong>
+          <span>RG: prod</span>
+        </div>
+        <div class="rm-arrow">
+          ✗<small>リージョン<br>不一致</small>
+        </div>
+        <div class="rm-box central">
+          <span class="rml">prod-workspace</span>
+          <strong>Central US</strong>
+          <span>RG: prod</span>
+        </div>
+      </div>
+      <div class="ib red" style="margin-top:8px">
+        <strong>問題点：East US の VM と Central US の Workspace はペアリングが成立しない</strong>
+        Update Management のために Automation Account を作っても、Central US の Workspace とリンクできない。<br>
+        → 既存の prod-workspace はこのVMのUpdate Managementには使えない。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ct">サポートされるリージョンペアの例（Automation ↔ Workspace）</div>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Automation Accountのリージョン</th><th>Log Analytics Workspaceのリージョン</th><th>Update Management</th></tr></thead>
+          <tbody>
+            <tr><td>East US 2</td><td>East US</td><td class="ok">✓ 対応</td></tr>
+            <tr><td>East US</td><td>East US 2</td><td class="ok">✓ 対応</td></tr>
+            <tr><td>West US 2</td><td>West Central US</td><td class="ok">✓ 対応</td></tr>
+            <tr><td>Japan East</td><td>Japan East</td><td class="ok">✓ 対応</td></tr>
+            <tr class="hl"><td>East US</td><td>Central US</td><td class="ng">✗ 非対応</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:12.5px;color:var(--muted)">※ 上記は代表例。実際のサポートリージョンはMicrosoft公式ドキュメントで確認が必要。</p>
+    </div>
+
+    <div class="card">
+      <div class="ct">解決策：East US に新しい Workspace が必要</div>
+      <div class="rm-grid">
+        <div class="rm-box east">
+          <span class="rml">linux1 VM</span>
+          <strong>East US</strong>
+          <span>RG: prod</span>
+        </div>
+        <div class="rm-arrow">
+          ✓<small>リージョン<br>一致</small>
+        </div>
+        <div class="rm-box new">
+          <span class="rml">新しい Workspace</span>
+          <strong>East US</strong>
+          <span>新規デプロイ</span>
+        </div>
+      </div>
+      <div class="ib emerald" style="margin-top:12px">
+        <strong>✅ 正解の操作</strong>
+        East US（またはEast US 2など対応リージョン）に<strong>2つ目の Log Analytics Workspace をデプロイ</strong>する。<br>
+        その後、同リージョンで Automation Account を作成し、新Workspaceとリンクして Update Management を有効化。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ct"><span class="tag ta">補足</span> boot diagnostics はなぜ関係ないか</div>
+      <p>boot diagnostics（選択肢③）はVMの起動ログやスクリーンショットを取得するための機能。<br>
+      OSパッチ管理とは無関係で、Update Management の前提条件でもない。</p>
+    </div>
+  </div>
+
+</div></div>
+
+<!-- ═══════════════ TAB 5: 問題解説 ═══════════════ -->
+<div class="pane" id="p-exam"><div class="wrap">
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:rgba(220,38,38,.2)">📝</span>問題シナリオの完全解析</div>
+
+    <div class="scen">
+      <h3>📋 シナリオ整理</h3>
+      <ul>
+        <li>linux1（Linux VM） — リソースグループ: prod、リージョン: <strong>East US</strong></li>
+        <li>prod-workspace（Log Analytics）— リソースグループ: prod、リージョン: <strong>Central US</strong></li>
+        <li>linux1 で Update Management ソリューションを有効化したい</li>
+      </ul>
+      <div class="prob">
+        🎯 問題の核心：<strong>VMはEast US</strong>なのに<strong>既存WorkspaceはCentral US</strong>。<br>
+        Update Managementのリージョン制約を満たしていないため、そのまま使えない。<br>
+        → まず何をすべきか？
+      </div>
+    </div>
+
+    <div class="acc-list">
+
+      <div class="acc">
+        <div class="ah" onclick="ta(this)">
+          <span class="verd v-ng">✗ 不正解</span>
+          <span class="aq">① Azure Automation の runbook を定義する</span>
+          <span class="aa">▼</span>
+        </div>
+        <div class="ab">
+          <p style="margin-bottom:10px">Runbook は Azure Automation の「自前スクリプト実行機能」。Update Management は Runbook とは別の専用ソリューション。</p>
+          <div class="ib amber">
+            <strong>順序の問題もある</strong>
+            仮にRunbookが必要だとしても、Workspaceのリージョン問題が解決されていない状態では何も進まない。
+            「最初にすること」ではない。
+          </div>
+        </div>
+      </div>
+
+      <div class="acc">
+        <div class="ah" onclick="ta(this)">
+          <span class="verd v-ng">✗ 不正解</span>
+          <span class="aq">② linux1 を Log Analytics workspace に接続する</span>
+          <span class="aa">▼</span>
+        </div>
+        <div class="ab">
+          <p style="margin-bottom:10px">VMをWorkspaceに接続するのは確かに必要なステップ。しかし<strong>「最初に」やることではない</strong>。</p>
+          <div class="ib red">
+            <strong>🚨 根本問題が解決していない</strong>
+            prod-workspace は Central US にある。East US の linux1 をこの Workspace に繋いでも、<br>
+            Update Management のために使う Automation Account と Workspace がリージョンペア要件を満たせない。<br>
+            つまり <strong>正しいリージョンの Workspace がまず必要</strong>。接続はその後。
+          </div>
+        </div>
+      </div>
+
+      <div class="acc">
+        <div class="ah" onclick="ta(this)">
+          <span class="verd v-ng">✗ 不正解</span>
+          <span class="aq">③ linux1 で boot diagnostics を有効化する</span>
+          <span class="aa">▼</span>
+        </div>
+        <div class="ab">
+          <p style="margin-bottom:10px">boot diagnostics はVMの起動画面・ログを取得する診断機能。VMが起動しない時のトラブルシューティングに使う。</p>
+          <div class="ib red">
+            <strong>🚨 Update Management とは完全に無関係</strong>
+            パッチ管理の前提条件でも何でもない。試験でよく登場する「もっともらしい罠選択肢」の典型。
+          </div>
+        </div>
+      </div>
+
+      <div class="acc">
+        <div class="ah" onclick="ta(this)">
+          <span class="verd v-ok">✓ 正解</span>
+          <span class="aq">④ 2つ目の Log Analytics workspace をデプロイする</span>
+          <span class="aa">▼</span>
+        </div>
+        <div class="ab">
+          <p style="margin-bottom:12px">既存の prod-workspace（Central US）は East US のlinux1 向け Update Management には使えない。<strong>East US（またはペアリージョン）に新しい Workspace を作成する必要がある</strong>。</p>
+          <div class="ib emerald">
+            <strong>✅ これが「最初にすること」な理由</strong>
+            正しいリージョンのWorkspaceがなければ、それ以降のステップ（Automation Account作成・VMの接続）が全部成立しない。<br>
+            土台となるWorkspaceを正しいリージョンに用意することが、依存関係の起点になる。
+          </div>
+          <p style="margin-top:10px;font-size:13px;color:var(--muted)">
+            その後の順序：<br>
+            ④ East USに新Workspaceデプロイ<br>
+            → Automation Account（East US）を作成してWorkspaceとリンク<br>
+            → Update Management ソリューションを有効化<br>
+            → linux1にエージェントをインストールして新Workspaceに接続<br>
+            → パッチスケジュール設定
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:rgba(5,150,105,.2)">💡</span>正解の根拠まとめ</div>
+    <div class="kb">
+      <h3>なぜ④が「最初にすること」なのか</h3>
+      <ul>
+        <li>Update Management の前提：Automation Account と Workspace が同一リージョン（またはペア）でなければならない</li>
+        <li>既存 prod-workspace は Central US → East US の VM 向けの Automation Account とリンク不可</li>
+        <li>よって、East US に対応した新しい Workspace がなければ何も始まらない</li>
+        <li>「最初に」= 他の全ステップの依存関係の起点になる操作</li>
+      </ul>
+    </div>
+  </div>
+
+</div></div>
+
+<!-- ═══════════════ TAB 6: 試験対策 ═══════════════ -->
+<div class="pane" id="p-tips"><div class="wrap">
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:rgba(13,148,136,.2)">🎯</span>類似問題を解くための思考フレーム</div>
+
+    <div class="tgrid">
+      <div class="tip">
+        <h4>📌 パターン①：リージョン不一致を検出する</h4>
+        <p>VMのリージョンとWorkspaceのリージョンが異なる → まず「正しいリージョンにWorkspaceを作れ」が正解になりやすい。問題文に2つのリージョンが出てきたら要注意。</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン②：「最初に」という問い方</h4>
+        <p>「最初に何をすべきか」= 依存関係の根本を問う問題。他の全ステップが依存する前提条件（インフラの土台）を選ぶ。ここではWorkspaceが土台。</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン③：Runbook の誤誘導</h4>
+        <p>「Automationが出てきた → Runbookが必要」は罠。Update ManagementはRunbookとは独立した専用ソリューション。Runbookは「自前スクリプト」の話。</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン④：boot diagnostics の罠</h4>
+        <p>boot diagnosticsはVM起動診断機能。Update Management・パッチ管理とは無関係。「もっともらしい」だけの罠選択肢として頻出。</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン⑤：VMの接続は「最初」ではない</h4>
+        <p>「VMをWorkspaceに接続する」は確かに必要なステップだが、正しいWorkspaceが存在しない状態ではできない。土台が整ってから繋ぐ。</p>
+      </div>
+      <div class="tip">
+        <h4>📌 パターン⑥：Automation = Workspace とセット</h4>
+        <p>Azure Automation Account は単体では機能しない。Update Management には必ずLog Analytics Workspaceとのリンクが必要。どちらが欠けてもセットアップ不可。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="st"><span class="si" style="background:rgba(5,150,105,.2)">🧠</span>頭に入れる一言まとめ</div>
+    <div class="tw">
+      <table>
+        <thead>
+          <tr><th>覚えること</th><th>内容</th></tr>
+        </thead>
+        <tbody>
+          <tr class="hl"><td>リージョン制約</td><td>Automation Account ↔ Workspace は同一/ペアリージョン必須</td></tr>
+          <tr><td>Update Managementの構成要素</td><td>Log Analytics Workspace + Automation Account + エージェント（VM内）</td></tr>
+          <tr><td>VMの「接続」の実態</td><td>MMA/OMS AgentをインストールしてWorkspace IDとキーを設定すること</td></tr>
+          <tr><td>Runbookとの違い</td><td>Runbook = 自前スクリプト。Update Management = 専用パッチ管理ソリューション</td></tr>
+          <tr><td>boot diagnostics</td><td>VM起動ログ取得機能。パッチ管理とは完全無関係</td></tr>
+          <tr><td>「最初に」の問いの解き方</td><td>全ステップの依存関係の根本＝土台を探す</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="ib teal">
+      <strong>🔑 この問題の一言要約</strong>
+      VMのリージョン（East US）と既存Workspace（Central US）がリージョン不一致 → Update Managementの前提条件を満たせない → 正しいリージョンに新しいWorkspaceを作るのが「最初にすること」。
+    </div>
+  </div>
+
+</div></div>
+
+<footer class="ft">Azure Update Management 完全攻略ガイド — AZ-104 / AZ-305 対応</footer>
+
+<script>
+function sw(id){
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('act'));
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('act'));
+  document.getElementById('p-'+id).classList.add('act');
+  event.currentTarget.classList.add('act');
+  document.getElementById('tnav').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function ta(h){
+  h.classList.toggle('op');
+  h.nextElementSibling.classList.toggle('op');
+}
+</script>
+</body>
+</html>
